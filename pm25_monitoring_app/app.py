@@ -6,7 +6,13 @@ from oauth2client.service_account import ServiceAccountCredentials
 import json
 
 # === Google Sheets Setup ===
-creds_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
+creds_json = st.secrets["GOOGLE_CREDENTIALS"]
+try:
+    creds_dict = json.loads(creds_json)
+    print("Private key starts with:", creds_dict["private_key"][:30])
+except json.JSONDecodeError:
+    st.error("Invalid JSON in GOOGLE_CREDENTIALS secret.")
+    st.stop()
 
 scope = [
     "https://spreadsheets.google.com/feeds",
@@ -14,14 +20,6 @@ scope = [
     "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/drive"
 ]
-creds_json = st.secrets["GOOGLE_CREDENTIALS"]
-try:
-    creds_dict = json.loads(creds_json)
-    print("Private key starts with:", creds_dict["private_key"][:30])
-except json.JSONDecodeError as e:
-    st.error("Invalid JSON in GOOGLE_CREDENTIALS secret.")
-    st.stop()
-    
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
@@ -43,15 +41,19 @@ except gspread.WorksheetNotFound:
     sheet.append_row([
         "Entry Type", "Operator ID", "Site", "Monitoring Officer", "Driver",
         "Date", "Time", "Temperature (°C)", "RH (%)", "Pressure (hPa)",
-        "Weather", "Wind", "Elapsed Time (min)", "Flow Rate (L/min)", "Notes"
+        "Weather", "Wind", "Elapsed Time (min)", "Flow Rate (L/min)", "Notes",
+        "Submitted At"
     ])
 
-# === Read from Google Sheet
+# === Functions ===
 def read_data():
-    return pd.DataFrame(sheet.get_all_records())
+    df = pd.DataFrame(sheet.get_all_records())
+    if not df.empty and "Submitted At" in df.columns:
+        df["Submitted At"] = pd.to_datetime(df["Submitted At"])
+    return df
 
-# === Append a row to Google Sheet
 def add_data(row):
+    row.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  # Add timestamp
     sheet.append_row(row)
 
 # === Streamlit UI ===
@@ -135,7 +137,24 @@ with st.form("stop_form"):
         else:
             st.error("Please complete all required fields.")
 
-# === Display Data Table ===
+# === Display Data Table with Filters ===
 st.header("Submitted Monitoring Records")
 df = read_data()
-st.dataframe(df, use_container_width=True)
+
+if df.empty:
+    st.info("No data submitted yet.")
+else:
+    with st.expander("🔍 Filter Records"):
+        id_filter = st.selectbox("Filter by Operator ID", ["All"] + sorted(df["Operator ID"].unique().tolist()))
+        date_range = st.date_input("Filter by Date Range", [])
+
+        # Apply ID filter
+        if id_filter != "All":
+            df = df[df["Operator ID"] == id_filter]
+
+        # Apply date range filter
+        if len(date_range) == 2:
+            start, end = date_range
+            df = df[(df["Submitted At"].dt.date >= start) & (df["Submitted At"].dt.date <= end)]
+
+    st.dataframe(df, use_container_width=True)
