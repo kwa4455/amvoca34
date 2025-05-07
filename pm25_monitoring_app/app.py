@@ -14,7 +14,14 @@ scope = [
     "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/drive"
 ]
-
+creds_json = st.secrets["GOOGLE_CREDENTIALS"]
+try:
+    creds_dict = json.loads(creds_json)
+    print("Private key starts with:", creds_dict["private_key"][:30])
+except json.JSONDecodeError as e:
+    st.error("Invalid JSON in GOOGLE_CREDENTIALS secret.")
+    st.stop()
+    
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
