@@ -24,9 +24,11 @@ client = gspread.authorize(creds)
 
 SPREADSHEET_ID = "1jCV-IqALZz7wKqjqc5ISrkA_dv35mX1ZowNqwFHf6mk"
 SHEET_NAME = 'Observations'
+MERGED_SHEET_NAME = 'Merged_Observations'
 
-# Open spreadsheet
 spreadsheet = client.open_by_key(SPREADSHEET_ID)
+
+# Try to open worksheet or create it
 try:
     sheet = spreadsheet.worksheet(SHEET_NAME)
 except gspread.WorksheetNotFound:
@@ -41,27 +43,25 @@ except gspread.WorksheetNotFound:
 # === Functions ===
 def read_data():
     df = pd.DataFrame(sheet.get_all_records())
-    if not df.empty:
+    if not df.empty and "Submitted At" in df.columns:
         df["Submitted At"] = pd.to_datetime(df["Submitted At"])
     return df
 
 def add_data(row):
-    row.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  # Add timestamp
+    row.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     sheet.append_row(row)
 
 def merge_start_stop(df):
-    df_start = df[df["Entry Type"] == "START"].copy()
-    df_stop = df[df["Entry Type"] == "STOP"].copy()
-
-    merge_cols = ["Operator ID", "Site", "Monitoring Officer", "Driver"]
+    start_df = df[df["Entry Type"] == "START"].copy()
+    stop_df = df[df["Entry Type"] == "STOP"].copy()
+    merge_cols = ["Operator ID", "Site"]
     merged = pd.merge(
-        df_start,
-        df_stop,
+        start_df,
+        stop_df,
         on=merge_cols,
-        suffixes=("_Start", "_Stop")
+        suffixes=("_start", "_stop")
     )
-    # Compute elapsed time difference (if both present and numeric)
-    merged["Elapsed Time Diff (min)"] = merged["Elapsed Time (min)_Stop"] - merged["Elapsed Time (min)_Start"]
+    merged["Elapsed Time Diff (min)"] = merged["Elapsed Time (min)_stop"] - merged["Elapsed Time (min)_start"]
     return merged
 
 def save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=MERGED_SHEET_NAME):
@@ -88,10 +88,11 @@ with st.sidebar:
     id_selected = st.selectbox("Select ID", ids)
     site_selected = st.selectbox("Select Site", sites)
     officer_selected = st.multiselect("Monitoring Officer(s)", officers)
+    officer_display = ", ".join(officer_selected)
     driver_name = st.text_input("Driver's Name")
 
-# === Start Day ===
-with st.expander("📅 Start Day Observation", expanded=False):
+# === Start Day Form ===
+with st.expander("Start Day Observation"):
     with st.form("start_form"):
         start_date = st.date_input("Start Date", value=datetime.today())
         start_obs = st.text_area("First Day Observation Notes")
@@ -111,20 +112,19 @@ with st.expander("📅 Start Day Observation", expanded=False):
         submit_start = st.form_submit_button("Submit Start Day Data")
         if submit_start:
             if all([id_selected, site_selected, officer_selected, driver_name]):
-                for officer in officer_selected:
-                    start_row = [
-                        "START", id_selected, site_selected, officer, driver_name,
-                        start_date.strftime("%Y-%m-%d"), start_time.strftime("%H:%M:%S"),
-                        start_temp, start_rh, start_pressure, start_weather, start_wind,
-                        start_elapsed, start_flow, start_obs
-                    ]
-                    add_data(start_row)
+                start_row = [
+                    "START", id_selected, site_selected, officer_display, driver_name,
+                    start_date.strftime("%Y-%m-%d"), start_time.strftime("%H:%M:%S"),
+                    start_temp, start_rh, start_pressure, start_weather, start_wind,
+                    start_elapsed, start_flow, start_obs
+                ]
+                add_data(start_row)
                 st.success("Start day data submitted successfully!")
             else:
                 st.error("Please complete all required fields.")
 
-# === Stop Day ===
-with st.expander("📅 Stop Day Observation", expanded=False):
+# === Stop Day Form ===
+with st.expander("Stop Day Observation"):
     with st.form("stop_form"):
         stop_date = st.date_input("Stop Date", value=datetime.today())
         stop_obs = st.text_area("Final Day Observation Notes")
@@ -144,26 +144,40 @@ with st.expander("📅 Stop Day Observation", expanded=False):
         submit_stop = st.form_submit_button("Submit Stop Day Data")
         if submit_stop:
             if all([id_selected, site_selected, officer_selected, driver_name]):
-                for officer in officer_selected:
-                    stop_row = [
-                        "STOP", id_selected, site_selected, officer, driver_name,
-                        stop_date.strftime("%Y-%m-%d"), stop_time.strftime("%H:%M:%S"),
-                        stop_temp, stop_rh, stop_pressure, stop_weather, stop_wind,
-                        stop_elapsed, stop_flow, stop_obs
-                    ]
-                    add_data(stop_row)
+                stop_row = [
+                    "STOP", id_selected, site_selected, officer_display, driver_name,
+                    stop_date.strftime("%Y-%m-%d"), stop_time.strftime("%H:%M:%S"),
+                    stop_temp, stop_rh, stop_pressure, stop_weather, stop_wind,
+                    stop_elapsed, stop_flow, stop_obs
+                ]
+                add_data(stop_row)
                 st.success("Stop day data submitted successfully!")
             else:
                 st.error("Please complete all required fields.")
 
-# === Display Merged Start/Stop Data ===
-st.header("📋 Merged Monitoring Records (Start & Stop)")
+# === Display Submitted Records ===
+st.header("Submitted Monitoring Records")
 df = read_data()
+
 if df.empty:
     st.info("No data submitted yet.")
 else:
+    with st.expander("\U0001F50D Filter Records"):
+        id_filter = st.selectbox("Filter by Operator ID", ["All"] + sorted(df["Operator ID"].unique().tolist()))
+        date_range = st.date_input("Filter by Date Range", [])
+
+        if id_filter != "All":
+            df = df[df["Operator ID"] == id_filter]
+        if len(date_range) == 2:
+            start, end = date_range
+            df = df[(df["Submitted At"].dt.date >= start) & (df["Submitted At"].dt.date <= end)]
+
+    st.dataframe(df, use_container_width=True)
+
+    # Merge and save merged data
     try:
         merged_df = merge_start_stop(df)
-        st.dataframe(merged_df, use_container_width=True)
+        save_merged_data_to_sheet(merged_df, spreadsheet)
+        st.success("Merged data saved to worksheet: Merged_Observations")
     except Exception as e:
-        st.error("Error merging data. Please ensure matching START/STOP entries exist.")
+        st.warning(f"Could not merge records: {e}")
