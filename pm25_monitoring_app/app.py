@@ -48,31 +48,20 @@ def add_data(row):
     sheet.append_row(row)
 
 def merge_start_stop(df):
-    start_df = df[df["Entry Type"] == "START"]
-    stop_df = df[df["Entry Type"] == "STOP"]
+    df_start = df[df["Entry Type"] == "START"].copy()
+    df_stop = df[df["Entry Type"] == "STOP"].copy()
 
-    st.write("Start DF columns:", start_df.columns.tolist())
-    st.write("Stop DF columns:", stop_df.columns.tolist())
+    merge_cols = ["Site ID", "Site", "Monitoring Officer", "Driver"]
+    merged = pd.merge(
+        df_start,
+        df_stop,
+        on=merge_cols,
+        suffixes=("_Start", "_Stop")
+    )
+    # Compute elapsed time difference (if both present and numeric)
+    merged["Elapsed Time Diff (min)"] = merged["Elapsed Time (min)_Stop"] - merged["Elapsed Time (min)_Start"]
+    return merged
 
-    # Optional: adjust the list based on available columns
-    merge_keys = ["Site", "Monitoring Officer", "Driver"]
-
-    # Merge only if all required columns are present
-    if all(col in start_df.columns and col in stop_df.columns for col in merge_keys):
-        merged = pd.merge(
-            start_df,
-            stop_df,
-            on=merge_keys,
-            suffixes=("_start", "_stop"),
-            how="inner"
-        )
-        merged["Elapsed Diff (min)"] = (
-            merged["Elapsed Time (min)_stop"] - merged["Elapsed Time (min)_start"]
-        )
-        return merged
-    else:
-        st.warning(f"Cannot merge. Missing columns in data: {merge_keys}")
-        return pd.DataFrame()
 
 
 def save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=MERGED_SHEET):
