@@ -102,14 +102,12 @@ st.markdown("""
 
 # --- Sidebar with Developer Info and Logo ---
 with st.sidebar:
-    st.header("📁 Upload Section")
-    uploaded_file = st.file_uploader("Upload PM₂.₅ CSV", type="csv")
-
+    
     st.markdown("---")
     st.markdown("### 👤 Developer Info")
-    st.markdown("**Obed Doe**  \nEnvironmental Data Analyst")
-    st.markdown("[📧 Email](mailto:your.email@example.com)")
-    st.markdown("[🌐 Website](https://your-portfolio-link.com)")
+    st.markdown("**Clement Mensah Ackaah**  \nEnvironmental Data Analyst")
+    st.markdown("[📧 Email](mailto:clement.ackaah@epa.gov.gh/clementackaah70@gmail.com)")
+    st.markdown("[🌐 Website](https://epa.gov)")
 
     st.markdown("---")
     st.image(
@@ -221,4 +219,11 @@ else:
         st.dataframe(merged_df, use_container_width=True)
     else:
         st.warning("No matching START and STOP records found to merge.")
+        
+st.markdown("""
+    <hr style="margin-top: 40px; margin-bottom:10px">
+    <div style='text-align: center; color: grey; font-size: 0.9em;'>
+        © 2025 EPA Ghana· Developed by Clement Mensah Ackaah· Built with ❤️ using Streamlit
+    </div>
+""", unsafe_allow_html=True)
 
