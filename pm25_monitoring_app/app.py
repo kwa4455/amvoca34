@@ -55,23 +55,29 @@ def merge_start_stop(df):
     if df.empty:
         return pd.DataFrame()
 
-    # Split into Start and Stop
+    # Separate START and STOP entries
     start_df = df[df["Entry Type"] == "START"].copy()
     stop_df = df[df["Entry Type"] == "STOP"].copy()
 
-    # Rename columns to distinguish
+    # Keep session_id before renaming columns
+    start_df = start_df.rename(columns={"Session ID": "session_id"})
+    stop_df = stop_df.rename(columns={"Session ID": "session_id"})
+
+    # Rename other columns to distinguish
     start_df = start_df.add_prefix("Start ")
     stop_df = stop_df.add_prefix("Stop ")
 
-    # Merge on Session ID
+    # Merge on session_id
     merged = pd.merge(
         start_df,
         stop_df,
-        left_on="Start Session ID",
-        right_on="Stop Session ID",
+        left_on="Start session_id",
+        right_on="Stop session_id",
         suffixes=("_start", "_stop")
     )
+
     return merged
+
 
 # === Streamlit UI ===
 st.title("PM2.5 Monitoring Data Entry")
