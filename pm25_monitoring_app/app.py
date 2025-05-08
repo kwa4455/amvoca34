@@ -9,7 +9,6 @@ import json
 creds_json = st.secrets["GOOGLE_CREDENTIALS"]
 try:
     creds_dict = json.loads(creds_json)
-    print("Private key starts with:", creds_dict["private_key"][:30])
 except json.JSONDecodeError:
     st.error("Invalid JSON in GOOGLE_CREDENTIALS secret.")
     st.stop()
@@ -33,9 +32,9 @@ spreadsheet = client.open_by_key(SPREADSHEET_ID)
 try:
     sheet = spreadsheet.worksheet(SHEET_NAME)
 except gspread.WorksheetNotFound:
-    sheet = spreadsheet.add_worksheet(title=SHEET_NAME, rows="100", cols="20")
+    sheet = spreadsheet.add_worksheet(title=SHEET_NAME, rows="100", cols="21")
     sheet.append_row([
-        "Entry Type", "Operator ID", "Site", "Monitoring Officer", "Driver",
+        "Session ID", "Entry Type", "Operator ID", "Site", "Monitoring Officer", "Driver",
         "Date", "Time", "Temperature (°C)", "RH (%)", "Pressure (hPa)",
         "Weather", "Wind", "Elapsed Time (min)", "Flow Rate (L/min)", "Notes",
         "Submitted At"
@@ -51,6 +50,28 @@ def read_data():
 def add_data(row):
     row.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))  # Add timestamp
     sheet.append_row(row)
+
+def merge_start_stop(df):
+    if df.empty:
+        return pd.DataFrame()
+
+    # Split into Start and Stop
+    start_df = df[df["Entry Type"] == "START"].copy()
+    stop_df = df[df["Entry Type"] == "STOP"].copy()
+
+    # Rename columns to distinguish
+    start_df = start_df.add_prefix("Start ")
+    stop_df = stop_df.add_prefix("Stop ")
+
+    # Merge on Session ID
+    merged = pd.merge(
+        start_df,
+        stop_df,
+        left_on="Start Session ID",
+        right_on="Stop Session ID",
+        suffixes=("_start", "_stop")
+    )
+    return merged
 
 # === Streamlit UI ===
 st.title("PM2.5 Monitoring Data Entry")
@@ -89,8 +110,9 @@ with st.form("start_form"):
 
     if submit_start:
         if all([id_selected, site_selected, officer_selected, driver_name]):
+            session_id = f"{id_selected}_{site_selected}_{start_date.strftime('%Y%m%d')}"
             start_row = [
-                "START", id_selected, site_selected, officer_selected, driver_name,
+                session_id, "START", id_selected, site_selected, officer_selected, driver_name,
                 start_date.strftime("%Y-%m-%d"), start_time.strftime("%H:%M:%S"),
                 start_temp, start_rh, start_pressure, start_weather, start_wind,
                 start_elapsed, start_flow, start_obs
@@ -122,8 +144,9 @@ with st.form("stop_form"):
 
     if submit_stop:
         if all([id_selected, site_selected, officer_selected, driver_name]):
+            session_id = f"{id_selected}_{site_selected}_{stop_date.strftime('%Y%m%d')}"
             stop_row = [
-                "STOP", id_selected, site_selected, officer_selected, driver_name,
+                session_id, "STOP", id_selected, site_selected, officer_selected, driver_name,
                 stop_date.strftime("%Y-%m-%d"), stop_time.strftime("%H:%M:%S"),
                 stop_temp, stop_rh, stop_pressure, stop_weather, stop_wind,
                 stop_elapsed, stop_flow, stop_obs
@@ -144,13 +167,19 @@ else:
         id_filter = st.selectbox("Filter by Operator ID", ["All"] + sorted(df["Operator ID"].unique().tolist()))
         date_range = st.date_input("Filter by Date Range", [])
 
-        # Apply ID filter
+        # Apply filters
         if id_filter != "All":
             df = df[df["Operator ID"] == id_filter]
-
-        # Apply date range filter
         if len(date_range) == 2:
             start, end = date_range
             df = df[(df["Submitted At"].dt.date >= start) & (df["Submitted At"].dt.date <= end)]
 
     st.dataframe(df, use_container_width=True)
+
+    # Merged Sessions View
+    with st.expander("🔗 Merged Start/Stop Sessions"):
+        merged_df = merge_start_stop(df)
+        if merged_df.empty:
+            st.info("No complete start/stop pairs yet.")
+        else:
+            st.dataframe(merged_df, use_container_width=True)
