@@ -102,7 +102,6 @@ st.markdown("""
 
 # --- Sidebar with Developer Info and Logo ---
 with st.sidebar:
-    
     st.markdown("---")
     st.markdown("### 👤 Developer Info")
     st.markdown("**Clement Mensah Ackaah**  \nEnvironmental Data Analyst")
@@ -201,11 +200,11 @@ if df.empty:
     st.info("No data submitted yet.")
 else:
     with st.expander("🔍 Filter Records"):
-        id_filter = st.selectbox("Filter by Site ID", ["All"] + sorted(df["Site ID"].unique().tolist()))
+        id_filter = st.selectbox("Filter by Site", ["All"] + sorted(df["Site"].unique().tolist()))
         date_range = st.date_input("Filter by Date Range", [])
 
         if id_filter != "All":
-            df = df[df["Site ID"] == id_filter]
+            df = df[df["Site"] == id_filter]
         if len(date_range) == 2:
             start, end = date_range
             df = df[(df["Submitted At"].dt.date >= start) & (df["Submitted At"].dt.date <= end)]
