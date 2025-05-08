@@ -173,4 +173,11 @@ else:
 
     st.dataframe(df, use_container_width=True)
 
-    
+    merged_df = merge_start_stop(df)
+    if not merged_df.empty:
+        save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=MERGED_SHEET)
+        st.success("Merged records saved to Google Sheets.")
+        st.dataframe(merged_df, use_container_width=True)
+    else:
+        st.warning("No matching START and STOP records found to merge.")
+
