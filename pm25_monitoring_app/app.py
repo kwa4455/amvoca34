@@ -63,14 +63,13 @@ def merge_start_stop(df):
     merged["Elapsed Diff (min)"] = merged["Elapsed Time (min)_stop"] - merged["Elapsed Time (min)_start"]
     return merged
 
-def write_merged_to_sheet(merged_df):
+def save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=MERGED_SHEET_NAME):
     try:
-        merged_sheet = spreadsheet.worksheet(MERGED_SHEET)
+        merged_sheet = spreadsheet.worksheet(sheet_name)
         spreadsheet.del_worksheet(merged_sheet)
     except gspread.WorksheetNotFound:
         pass
-
-    merged_sheet = spreadsheet.add_worksheet(title=MERGED_SHEET, rows="100", cols="30")
+    merged_sheet = spreadsheet.add_worksheet(title=sheet_name, rows="100", cols="20")
     merged_sheet.append_row(merged_df.columns.tolist())
     for _, row in merged_df.iterrows():
         merged_sheet.append_row(row.astype(str).tolist())
@@ -174,8 +173,4 @@ else:
 
     st.dataframe(df, use_container_width=True)
 
-    if st.button("Generate and Save Merged Records"):
-        merged_df = merge_start_stop(df)
-        write_merged_to_sheet(merged_df)
-        st.success("Merged records saved to Google Sheets.")
-        st.dataframe(merged_df, use_container_width=True)
+    
