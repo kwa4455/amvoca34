@@ -64,6 +64,17 @@ def merge_start_stop(df):
     merged["Elapsed Time Diff (min)"] = merged["Elapsed Time (min)_Stop"] - merged["Elapsed Time (min)_Start"]
     return merged
 
+def save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=MERGED_SHEET_NAME):
+    try:
+        merged_sheet = spreadsheet.worksheet(sheet_name)
+        spreadsheet.del_worksheet(merged_sheet)
+    except gspread.WorksheetNotFound:
+        pass
+    merged_sheet = spreadsheet.add_worksheet(title=sheet_name, rows="100", cols="20")
+    merged_sheet.append_row(merged_df.columns.tolist())
+    for _, row in merged_df.iterrows():
+        merged_sheet.append_row(row.astype(str).tolist())
+
 # === Streamlit UI ===
 st.title("PM2.5 Monitoring Data Entry")
 
