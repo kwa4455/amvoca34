@@ -103,6 +103,7 @@ st.markdown("""
 
 # --- Sidebar with Developer Info and Logo ---
 with st.sidebar:
+    
     st.markdown("---")
     st.markdown("### 📞 For any Information, Please Contact")
     st.markdown("### 👤 The Developer")
@@ -135,14 +136,14 @@ if entry_type == "START":
         start_date = st.date_input("Start Date", value=datetime.today())
         start_obs = st.text_area("First Day Observation Notes")
 
-        st.markdown("#### Atmospheric Conditions")
+        st.markdown("#### Initial Atmospheric Conditions")
         start_temp = st.number_input("Temperature (°C)", step=0.1)
         start_rh = st.number_input("Relative Humidity (%)", step=0.1)
         start_pressure = st.number_input("Pressure (hPa)", step=0.1)
         start_weather = st.text_input("Weather")
         start_wind = st.text_input("Wind Speed and Direction")
 
-        st.markdown("#### Sampler Information")
+        st.markdown("#### Initial Sampler Information")
         start_elapsed = st.number_input("Initial Elapsed Time (min)", step=1)
         start_flow = st.number_input("Initial Flow Rate (L/min)", step=0.1)
         start_time = st.time_input("Start Time", value=datetime.now().time())
@@ -173,7 +174,7 @@ elif entry_type == "STOP":
         stop_weather = st.text_input("Final Weather")
         stop_wind = st.text_input("Final Wind Speed and Direction")
 
-        st.markdown("#### Sampler Information")
+        st.markdown("#### Final Sampler Information")
         stop_elapsed = st.number_input("Final Elapsed Time (min)", step=1)
         stop_flow = st.number_input("Final Flow Rate (L/min)", step=0.1)
         stop_time = st.time_input("Stop Time", value=datetime.now().time())
