@@ -75,7 +75,50 @@ def save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=MERGED_SHEET):
         merged_sheet.append_row(row.astype(str).tolist())
 
 # === Streamlit UI ===
-st.title("PM2.5 Monitoring Data Entry")
+st.set_page_config(page_title="EPA Ghana | PM₂.₅ Monitoring", layout="wide")
+
+# --- Custom CSS + Google Fonts ---
+st.markdown("""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap');
+
+        html, body, [class*="css"] {
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .stButton>button {
+            background-color: #006400;
+            color: white;
+            font-weight: bold;
+        }
+
+        .stButton>button:hover {
+            background-color: #004d00;
+        }
+
+        footer {visibility: hidden;}
+    </style>
+""", unsafe_allow_html=True)
+
+# --- Sidebar with Developer Info and Logo ---
+with st.sidebar:
+    st.header("📁 Upload Section")
+    uploaded_file = st.file_uploader("Upload PM₂.₅ CSV", type="csv")
+
+    st.markdown("---")
+    st.markdown("### 👤 Developer Info")
+    st.markdown("**Obed Doe**  \nEnvironmental Data Analyst")
+    st.markdown("[📧 Email](mailto:your.email@example.com)")
+    st.markdown("[🌐 Website](https://your-portfolio-link.com)")
+
+    st.markdown("---")
+    st.image(
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Environmental_Protection_Agency_%28Ghana%29_logo.jpg/240px-Environmental_Protection_Agency_%28Ghana%29_logo.jpg",
+        width=150
+    )
+
+# --- Page Title ---
+st.title("🇬🇭 EPA Ghana | PM₂.₅ Monitoring Data Entry")
 
 ids = ["",'1', '2', '3','4','5','6','7','8','9','10']
 sites = ["",'Kaneshie First Light', 'Tetteh Quarshie', 'Achimota', 'La','Mallam Market','Graphic Road','Weija','Tantra Hill', 'Amasaman']
