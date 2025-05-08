@@ -51,7 +51,7 @@ def merge_start_stop(df):
     df_start = df[df["Entry Type"] == "START"].copy()
     df_stop = df[df["Entry Type"] == "STOP"].copy()
 
-    merge_cols = ["Site ID", "Site", "Monitoring Officer", "Driver"]
+    merge_cols = [ "Site", "Monitoring Officer", "Driver"]
     merged = pd.merge(
         df_start,
         df_stop,
