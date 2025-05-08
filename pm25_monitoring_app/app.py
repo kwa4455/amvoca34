@@ -110,10 +110,6 @@ with st.sidebar:
     st.markdown("[🌐 Website](https://epa.gov)")
 
     st.markdown("---")
-    st.image(
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Environmental_Protection_Agency_%28Ghana%29_logo.jpg/240px-Environmental_Protection_Agency_%28Ghana%29_logo.jpg",
-        width=150
-    )
 
 # --- Page Title ---
 st.title("🇬🇭 EPA Ghana | PM₂.₅ Monitoring Data Entry")
