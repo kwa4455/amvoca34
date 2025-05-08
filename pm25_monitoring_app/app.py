@@ -63,7 +63,7 @@ def merge_start_stop(df):
     merged["Elapsed Diff (min)"] = merged["Elapsed Time (min)_stop"] - merged["Elapsed Time (min)_start"]
     return merged
 
-def save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=MERGED_SHEET_NAME):
+def save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=MERGED_SHEET):
     try:
         merged_sheet = spreadsheet.worksheet(sheet_name)
         spreadsheet.del_worksheet(merged_sheet)
