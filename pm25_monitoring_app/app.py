@@ -77,9 +77,9 @@ def save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=MERGED_SHEET):
 # === Streamlit UI ===
 st.title("PM2.5 Monitoring Data Entry")
 
-ids = ["",'ID001', 'ID002', 'ID003']
-sites = ["",'Site A', 'Site B', 'Site C']
-officers = ['Officer 1', 'Officer 2', 'Officer 3']
+ids = ["",'1', '2', '3','4','5','6','7','8','9','10']
+sites = ["",'Kaneshie First Light', 'Tetteh Quarshie', 'Achimota', 'La','Mallam Market','Graphic Road','Weija','Tantra Hill', 'Amasaman']
+officers = ['Obed', 'Clement', 'Peter','Ben','Mawuli']
 
 # Entry Type Selection
 entry_type = st.selectbox("Select Entry Type", ["", "START", "STOP"])
