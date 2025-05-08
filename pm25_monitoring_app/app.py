@@ -30,7 +30,7 @@ try:
 except gspread.WorksheetNotFound:
     sheet = spreadsheet.add_worksheet(title=MAIN_SHEET, rows="100", cols="20")
     sheet.append_row([
-        "Entry Type", "Operator ID", "Site", "Monitoring Officer", "Driver",
+        "Entry Type", "Site ID", "Site", "Monitoring Officer", "Driver",
         "Date", "Time", "Temperature (°C)", "RH (%)", "Pressure (hPa)",
         "Weather", "Wind", "Elapsed Time (min)", "Flow Rate (L/min)", "Notes",
         "Submitted At"
@@ -55,7 +55,7 @@ def merge_start_stop(df):
     merged = pd.merge(
         start_df,
         stop_df,
-        on=["Operator ID", "Site", "Monitoring Officer", "Driver"],
+        on=["Site ID", "Site", "Monitoring Officer", "Driver"],
         suffixes=("_start", "_stop"),
         how="inner"
     )
@@ -85,7 +85,7 @@ officers = ['Obed', 'Clement', 'Peter','Ben','Mawuli']
 entry_type = st.selectbox("Select Entry Type", ["", "START", "STOP"])
 
 if entry_type:
-    id_selected = st.selectbox("Select Operator ID", ids)
+    id_selected = st.selectbox("Select Site ID", ids)
     site_selected = st.selectbox("Select Site", sites)
     officer_selected = st.multiselect("Monitoring Officer(s)", officers)
     driver_name = st.text_input("Driver's Name")
@@ -160,11 +160,11 @@ if df.empty:
     st.info("No data submitted yet.")
 else:
     with st.expander("🔍 Filter Records"):
-        id_filter = st.selectbox("Filter by Operator ID", ["All"] + sorted(df["Operator ID"].unique().tolist()))
+        id_filter = st.selectbox("Filter by Site ID", ["All"] + sorted(df["Site ID"].unique().tolist()))
         date_range = st.date_input("Filter by Date Range", [])
 
         if id_filter != "All":
-            df = df[df["Operator ID"] == id_filter]
+            df = df[df["Site ID"] == id_filter]
         if len(date_range) == 2:
             start, end = date_range
             df = df[(df["Submitted At"].dt.date >= start) & (df["Submitted At"].dt.date <= end)]
