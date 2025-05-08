@@ -23,17 +23,13 @@ scope = [
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
-SPREADSHEET_NAME = 'PM25_Monitoring'
+SPREADSHEET_ID = "1jCV-IqALZz7wKqjqc5ISrkA_dv35mX1ZowNqwFHf6mk"
 SHEET_NAME = 'Observations'
 
-# Open or create spreadsheet
-try:
-    spreadsheet = client.open(SPREADSHEET_NAME)
-except gspread.SpreadsheetNotFound:
-    st.error(f"Spreadsheet named '{SPREADSHEET_NAME}' not found.")
-    st.stop()
+# Open spreadsheet by ID
+spreadsheet = client.open_by_key(SPREADSHEET_ID)
 
-# Open or create worksheet
+# Try to open worksheet or create it
 try:
     sheet = spreadsheet.worksheet(SHEET_NAME)
 except gspread.WorksheetNotFound:
