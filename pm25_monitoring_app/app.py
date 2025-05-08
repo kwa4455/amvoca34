@@ -48,20 +48,32 @@ def add_data(row):
     sheet.append_row(row)
 
 def merge_start_stop(df):
-    df = df.sort_values("Submitted At")
     start_df = df[df["Entry Type"] == "START"]
     stop_df = df[df["Entry Type"] == "STOP"]
 
-    merged = pd.merge(
-        start_df,
-        stop_df,
-        on=["Site ID", "Site", "Monitoring Officer", "Driver"],
-        suffixes=("_start", "_stop"),
-        how="inner"
-    )
+    st.write("Start DF columns:", start_df.columns.tolist())
+    st.write("Stop DF columns:", stop_df.columns.tolist())
 
-    merged["Elapsed Diff (min)"] = merged["Elapsed Time (min)_stop"] - merged["Elapsed Time (min)_start"]
-    return merged
+    # Optional: adjust the list based on available columns
+    merge_keys = ["Site", "Monitoring Officer", "Driver"]
+
+    # Merge only if all required columns are present
+    if all(col in start_df.columns and col in stop_df.columns for col in merge_keys):
+        merged = pd.merge(
+            start_df,
+            stop_df,
+            on=merge_keys,
+            suffixes=("_start", "_stop"),
+            how="inner"
+        )
+        merged["Elapsed Diff (min)"] = (
+            merged["Elapsed Time (min)_stop"] - merged["Elapsed Time (min)_start"]
+        )
+        return merged
+    else:
+        st.warning(f"Cannot merge. Missing columns in data: {merge_keys}")
+        return pd.DataFrame()
+
 
 def save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=MERGED_SHEET):
     try:
