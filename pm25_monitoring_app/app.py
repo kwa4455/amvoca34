@@ -84,12 +84,11 @@ officers = ['Obed', 'Clement', 'Peter','Ben','Mawuli']
 # Entry Type Selection
 entry_type = st.selectbox("Select Entry Type", ["", "START", "STOP"])
 
-with st.sidebar:
-    if entry_type:
-        id_selected = st.selectbox("Select Operator ID", ids)
-        site_selected = st.selectbox("Select Site", sites)
-        officer_selected = st.multiselect("Monitoring Officer(s)", officers)
-        driver_name = st.text_input("Driver's Name")
+if entry_type:
+    id_selected = st.selectbox("Select Operator ID", ids)
+    site_selected = st.selectbox("Select Site", sites)
+    officer_selected = st.multiselect("Monitoring Officer(s)", officers)
+    driver_name = st.text_input("Driver's Name")
 
 # === Start Day Observation ===
 if entry_type == "START":
