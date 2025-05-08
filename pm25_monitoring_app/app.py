@@ -78,12 +78,12 @@ def write_merged_to_sheet(merged_df):
 # === Streamlit UI ===
 st.title("PM2.5 Monitoring Data Entry")
 
-ids = ['ID001', 'ID002', 'ID003']
-sites = ['Site A', 'Site B', 'Site C']
+ids = ["",'ID001', 'ID002', 'ID003']
+sites = ["",'Site A', 'Site B', 'Site C']
 officers = ['Officer 1', 'Officer 2', 'Officer 3']
 
 # Entry Type Selection
-entry_type = st.radio("Select Entry Type", ["START", "STOP"])
+entry_type = st.selectbox("Select Entry Type", ["", "START", "STOP"])
 
 # Conditional Display of ID and Site
 if entry_type:
