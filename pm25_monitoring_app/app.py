@@ -104,12 +104,14 @@ st.markdown("""
 # --- Sidebar with Developer Info and Logo ---
 with st.sidebar:
     st.markdown("---")
-    st.markdown("### 👤 Developer Info")
+    st.markdown("### 📞 For any Information, Please Contact")
+    st.markdown("### 👤 The Developer")
     st.markdown("**Clement Mensah Ackaah**  \nEnvironmental Data Analyst")
-    st.markdown("[📧 Email](mailto:clement.ackaah@epa.gov.gh/clementackaah70@gmail.com)")
+    st.markdown("[📧 Email 1](mailto:clement.ackaah@epa.gov.gh) | [📧 Email 2](mailto:clementackaah70@gmail.com)")
     st.markdown("[🌐 Website](https://epa.gov)")
 
     st.markdown("---")
+    
 
 # --- Page Title ---
 st.title("🇬🇭 EPA Ghana | PM₂.₅ Monitoring Data Entry")
