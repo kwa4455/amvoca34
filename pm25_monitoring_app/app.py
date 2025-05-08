@@ -59,20 +59,30 @@ def merge_start_stop(df):
     start_df = df[df["Entry Type"] == "START"].copy()
     stop_df = df[df["Entry Type"] == "STOP"].copy()
 
-    # Keep session_id before renaming columns
-    start_df = start_df.rename(columns={"Session ID": "session_id"})
-    stop_df = stop_df.rename(columns={"Session ID": "session_id"})
+    # Add a session ID to pair start and stop rows
+    # You can adjust this logic to use an existing identifier if present
+    start_df["session_id"] = start_df["Operator ID"] + "_" + start_df["Date"] + "_" + start_df["Site"]
+    stop_df["session_id"] = stop_df["Operator ID"] + "_" + stop_df["Date"] + "_" + stop_df["Site"]
 
-    # Rename other columns to distinguish
-    start_df = start_df.add_prefix("Start ")
-    stop_df = stop_df.add_prefix("Stop ")
+    # Rename all columns except session_id
+    start_session_id = start_df["session_id"]
+    stop_session_id = stop_df["session_id"]
+    start_df = start_df.drop(columns=["session_id"]).add_prefix("Start ")
+    stop_df = stop_df.drop(columns=["session_id"]).add_prefix("Stop ")
+
+    # Restore session_id for merging
+    start_df["session_id"] = start_session_id
+    stop_df["session_id"] = stop_session_id
+
+    # Print to debug if needed
+    # st.write("Start DF Columns:", start_df.columns)
+    # st.write("Stop DF Columns:", stop_df.columns)
 
     # Merge on session_id
     merged = pd.merge(
         start_df,
         stop_df,
-        left_on="Start session_id",
-        right_on="Stop session_id",
+        on="session_id",
         suffixes=("_start", "_stop")
     )
 
@@ -83,8 +93,8 @@ def merge_start_stop(df):
 st.title("PM2.5 Monitoring Data Entry")
 
 ids = ['ID001', 'ID002', 'ID003']
-sites = ['Site A', 'Site B', 'Site C']
-officers = ['Officer 1', 'Officer 2', 'Officer 3']
+sites = ['Kaneshie First Light', 'Tetteh Quarshie Roundabout', 'Achimota Interchange', 'La', 'Mallam Market',  'Graphic road', 'Tantra Hill','Amasaman']
+officers = ['Clement', 'Obed', 'Mawuli','Peter', 'Ben']
 
 # Sidebar - Operator Info
 with st.sidebar:
