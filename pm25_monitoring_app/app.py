@@ -219,7 +219,12 @@ else:
         st.dataframe(merged_df, use_container_width=True)
     else:
         st.warning("No matching START and STOP records found to merge.")
-        
+with st.sidebar:
+    sentiment_mapping = ["one", "two", "three", "four", "five"]
+    selected = st.feedback("stars")
+    if selected is not None:
+        st.markdown(f"You selected {sentiment_mapping[selected]} star(s).")
+ 
 st.markdown("""
     <hr style="margin-top: 40px; margin-bottom:10px">
     <div style='text-align: center; color: grey; font-size: 0.9em;'>
