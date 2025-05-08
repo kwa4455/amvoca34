@@ -88,76 +88,76 @@ with st.sidebar:
     officer_selected = st.selectbox("Monitoring Officer", officers)
     driver_name = st.text_input("Driver's Name")
 
-# === Form 1: Start Day ===
-st.subheader("Start Day Observation")
-with st.form("start_form"):
-    start_date = st.date_input("Start Date", value=datetime.today())
-    start_obs = st.text_area("First Day Observation Notes")
+# === Start Day Observation ===
+with st.expander("📄 Start Day Observation"):
+    with st.form("start_form"):
+        start_date = st.date_input("Start Date", value=datetime.today())
+        start_obs = st.text_area("First Day Observation Notes")
 
-    st.markdown("#### Atmospheric Conditions")
-    start_temp = st.number_input("Temperature (°C)", step=0.1)
-    start_rh = st.number_input("Relative Humidity (%)", step=0.1)
-    start_pressure = st.number_input("Pressure (hPa)", step=0.1)
-    start_weather = st.text_input("Weather")
-    start_wind = st.text_input("Wind Speed and Direction")
+        st.markdown("#### Atmospheric Conditions")
+        start_temp = st.number_input("Temperature (°C)", step=0.1)
+        start_rh = st.number_input("Relative Humidity (%)", step=0.1)
+        start_pressure = st.number_input("Pressure (hPa)", step=0.1)
+        start_weather = st.text_input("Weather")
+        start_wind = st.text_input("Wind Speed and Direction")
 
-    st.markdown("#### Sampler Information")
-    start_elapsed = st.number_input("Initial Elapsed Time (min)", step=1)
-    start_flow = st.number_input("Initial Flow Rate (L/min)", step=0.1)
-    start_time = st.time_input("Start Time", value=datetime.now().time())
+        st.markdown("#### Sampler Information")
+        start_elapsed = st.number_input("Initial Elapsed Time (min)", step=1)
+        start_flow = st.number_input("Initial Flow Rate (L/min)", step=0.1)
+        start_time = st.time_input("Start Time", value=datetime.now().time())
 
-    submit_start = st.form_submit_button("Submit Start Day Data")
+        submit_start = st.form_submit_button("Submit Start Day Data")
 
-    if submit_start:
-        if all([id_selected, site_selected, officer_selected, driver_name]):
-            session_id = f"{id_selected}_{site_selected}_{start_date.strftime('%Y%m%d')}"
-            start_row = [
-                session_id, "START", id_selected, site_selected, officer_selected, driver_name,
-                start_date.strftime("%Y-%m-%d"), start_time.strftime("%H:%M:%S"),
-                start_temp, start_rh, start_pressure, start_weather, start_wind,
-                start_elapsed, start_flow, start_obs
-            ]
-            add_data(start_row)
-            st.success("Start day data submitted successfully!")
-        else:
-            st.error("Please complete all required fields.")
+        if submit_start:
+            if all([id_selected, site_selected, officer_selected, driver_name]):
+                session_id = f"{id_selected}_{site_selected}_{start_date.strftime('%Y%m%d')}"
+                start_row = [
+                    session_id, "START", id_selected, site_selected, officer_selected, driver_name,
+                    start_date.strftime("%Y-%m-%d"), start_time.strftime("%H:%M:%S"),
+                    start_temp, start_rh, start_pressure, start_weather, start_wind,
+                    start_elapsed, start_flow, start_obs
+                ]
+                add_data(start_row)
+                st.success("Start day data submitted successfully!")
+            else:
+                st.error("Please complete all required fields.")
 
-# === Form 2: Stop Day ===
-st.subheader("Stop Day Observation")
-with st.form("stop_form"):
-    stop_date = st.date_input("Stop Date", value=datetime.today())
-    stop_obs = st.text_area("Final Day Observation Notes")
+# === Stop Day Observation ===
+with st.expander("📄 Stop Day Observation"):
+    with st.form("stop_form"):
+        stop_date = st.date_input("Stop Date", value=datetime.today())
+        stop_obs = st.text_area("Final Day Observation Notes")
 
-    st.markdown("#### Final Atmospheric Conditions")
-    stop_temp = st.number_input("Final Temperature (°C)", step=0.1)
-    stop_rh = st.number_input("Final Relative Humidity (%)", step=0.1)
-    stop_pressure = st.number_input("Final Pressure (hPa)", step=0.1)
-    stop_weather = st.text_input("Final Weather")
-    stop_wind = st.text_input("Final Wind Speed and Direction")
+        st.markdown("#### Final Atmospheric Conditions")
+        stop_temp = st.number_input("Final Temperature (°C)", step=0.1)
+        stop_rh = st.number_input("Final Relative Humidity (%)", step=0.1)
+        stop_pressure = st.number_input("Final Pressure (hPa)", step=0.1)
+        stop_weather = st.text_input("Final Weather")
+        stop_wind = st.text_input("Final Wind Speed and Direction")
 
-    st.markdown("#### Sampler Information")
-    stop_elapsed = st.number_input("Final Elapsed Time (min)", step=1)
-    stop_flow = st.number_input("Final Flow Rate (L/min)", step=0.1)
-    stop_time = st.time_input("Stop Time", value=datetime.now().time())
+        st.markdown("#### Sampler Information")
+        stop_elapsed = st.number_input("Final Elapsed Time (min)", step=1)
+        stop_flow = st.number_input("Final Flow Rate (L/min)", step=0.1)
+        stop_time = st.time_input("Stop Time", value=datetime.now().time())
 
-    submit_stop = st.form_submit_button("Submit Stop Day Data")
+        submit_stop = st.form_submit_button("Submit Stop Day Data")
 
-    if submit_stop:
-        if all([id_selected, site_selected, officer_selected, driver_name]):
-            session_id = f"{id_selected}_{site_selected}_{stop_date.strftime('%Y%m%d')}"
-            stop_row = [
-                session_id, "STOP", id_selected, site_selected, officer_selected, driver_name,
-                stop_date.strftime("%Y-%m-%d"), stop_time.strftime("%H:%M:%S"),
-                stop_temp, stop_rh, stop_pressure, stop_weather, stop_wind,
-                stop_elapsed, stop_flow, stop_obs
-            ]
-            add_data(stop_row)
-            st.success("Stop day data submitted successfully!")
-        else:
-            st.error("Please complete all required fields.")
+        if submit_stop:
+            if all([id_selected, site_selected, officer_selected, driver_name]):
+                session_id = f"{id_selected}_{site_selected}_{stop_date.strftime('%Y%m%d')}"
+                stop_row = [
+                    session_id, "STOP", id_selected, site_selected, officer_selected, driver_name,
+                    stop_date.strftime("%Y-%m-%d"), stop_time.strftime("%H:%M:%S"),
+                    stop_temp, stop_rh, stop_pressure, stop_weather, stop_wind,
+                    stop_elapsed, stop_flow, stop_obs
+                ]
+                add_data(stop_row)
+                st.success("Stop day data submitted successfully!")
+            else:
+                st.error("Please complete all required fields.")
 
 # === Display Data Table with Filters ===
-st.header("Submitted Monitoring Records")
+st.header("📋 Submitted Monitoring Records")
 df = read_data()
 
 if df.empty:
@@ -167,7 +167,6 @@ else:
         id_filter = st.selectbox("Filter by Operator ID", ["All"] + sorted(df["Operator ID"].unique().tolist()))
         date_range = st.date_input("Filter by Date Range", [])
 
-        # Apply filters
         if id_filter != "All":
             df = df[df["Operator ID"] == id_filter]
         if len(date_range) == 2:
@@ -176,7 +175,6 @@ else:
 
     st.dataframe(df, use_container_width=True)
 
-    # Merged Sessions View
     with st.expander("🔗 Merged Start/Stop Sessions"):
         merged_df = merge_start_stop(df)
         if merged_df.empty:
