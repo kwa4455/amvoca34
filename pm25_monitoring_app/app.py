@@ -223,55 +223,58 @@ with st.sidebar:
     if selected is not None:
         st.markdown(f"You selected {sentiment_mapping[selected]} star(s).")
 
-st.header("✏️ Edit Submitted Records")
 
-if not df.empty:
-    df["Row Number"] = df.index + 2  # Adjust for header row in Google Sheets
+with st.expander("✏️ Edit Submitted Records"):
+    st.header("Edit Submitted Records")
 
-    # Create a unique identifier for each record
-    df["Record ID"] = df.apply(lambda x: f"{x['Entry Type']} | {x['ID']} | {x['Site']} | {x['Submitted At'].strftime('%Y-%m-%d %H:%M')}", axis=1)
+    if not df.empty:
+        df["Row Number"] = df.index + 2  # Adjust for header row in Google Sheets
 
-    selected_record = st.selectbox("Select a record to edit:", df["Record ID"].tolist())
+        # Create a unique identifier
+        df["Record ID"] = df.apply(
+            lambda x: f"{x['Entry Type']} | {x['ID']} | {x['Site']} | {x['Submitted At'].strftime('%Y-%m-%d %H:%M')}",
+            axis=1
+        )
 
-    if selected_record:
-        selected_index = df[df["Record ID"] == selected_record].index[0]
-        record_data = df.loc[selected_index]
-        row_number = record_data["Row Number"]  # Actual row number in Google Sheet
+        selected_record = st.selectbox("Select a record to edit:", df["Record ID"].tolist())
 
-        with st.form("edit_form"):
-            # Editable fields
-            entry_type = st.selectbox("Entry Type", ["START", "STOP"], index=["START", "STOP"].index(record_data["Entry Type"]))
-            site_id = st.text_input("ID", value=record_data["ID"])
-            site = st.text_input("Site", value=record_data["Site"])
-            monitoring_officer = st.text_input("Monitoring Officer", value=record_data["Monitoring Officer"])
-            driver = st.text_input("Driver", value=record_data["Driver"])
-            date = st.date_input("Date", value=pd.to_datetime(record_data["Date"]))
-            time = st.time_input("Time", value=pd.to_datetime(record_data["Time"]).time())
-            temperature = st.number_input("Temperature (°C)", value=float(record_data["Temperature (°C)"]), step=0.1)
-            rh = st.number_input("Relative Humidity (%)", value=float(record_data["RH (%)"]), step=0.1)
-            pressure = st.number_input("Pressure (hPa)", value=float(record_data["Pressure (hPa)"]), step=0.1)
-            weather = st.text_input("Weather", value=record_data["Weather"])
-            wind = st.text_input("Wind", value=record_data["Wind"])
-            elapsed_time = st.number_input("Elapsed Time (min)", value=float(record_data["Elapsed Time (min)"]), step=1.0)
-            flow_rate = st.number_input("Flow Rate (L/min)", value=float(record_data["Flow Rate (L/min)"]), step=0.1)
-            observation_value = record_data["Observation"] if "Observation" in record_data else ""
-            observation = st.text_area("Observation", value=observation_value)
-            submitted = st.form_submit_button("Update Record")
+        if selected_record:
+            selected_index = df[df["Record ID"] == selected_record].index[0]
+            record_data = df.loc[selected_index]
+            row_number = record_data["Row Number"]
 
-            if submitted:
-                # Prepare updated data
-                updated_data = [
-                    entry_type, site_id, site, monitoring_officer, driver,
-                    date.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"),
-                    temperature, rh, pressure, weather, wind,
-                    elapsed_time, flow_rate, observation
-                ]
+            with st.form("edit_form"):
+                entry_type = st.selectbox("Entry Type", ["START", "STOP"], index=["START", "STOP"].index(record_data["Entry Type"]))
+                site_id = st.text_input("ID", value=record_data["ID"])
+                site = st.text_input("Site", value=record_data["Site"])
+                monitoring_officer = st.text_input("Monitoring Officer", value=record_data["Monitoring Officer"])
+                driver = st.text_input("Driver", value=record_data["Driver"])
+                date = st.date_input("Date", value=pd.to_datetime(record_data["Date"]))
+                time = st.time_input("Time", value=pd.to_datetime(record_data["Time"]).time())
+                temperature = st.number_input("Temperature (°C)", value=float(record_data["Temperature (°C)"]), step=0.1)
+                rh = st.number_input("Relative Humidity (%)", value=float(record_data["RH (%)"]), step=0.1)
+                pressure = st.number_input("Pressure (hPa)", value=float(record_data["Pressure (hPa)"]), step=0.1)
+                weather = st.text_input("Weather", value=record_data["Weather"])
+                wind = st.text_input("Wind", value=record_data["Wind"])
+                elapsed_time = st.number_input("Elapsed Time (min)", value=float(record_data["Elapsed Time (min)"]), step=1.0)
+                flow_rate = st.number_input("Flow Rate (L/min)", value=float(record_data["Flow Rate (L/min)"]), step=0.1)
+                observation_value = record_data["Observation"] if "Observation" in record_data else ""
+                observation = st.text_area("Observation", value=observation_value)
+                submitted = st.form_submit_button("Update Record")
 
-                # Update each cell in the corresponding row
-                for col_index, value in enumerate(updated_data, start=1):
-                    sheet.update_cell(row_number, col_index, value)
+                if submitted:
+                    updated_data = [
+                        entry_type, site_id, site, monitoring_officer, driver,
+                        date.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"),
+                        temperature, rh, pressure, weather, wind,
+                        elapsed_time, flow_rate, observation
+                    ]
 
-                st.success("Record updated successfully!")
+                    for col_index, value in enumerate(updated_data, start=1):
+                        sheet.update_cell(row_number, col_index, value)
+
+                    st.success("Record updated successfully!")
+
 st.markdown("""
     <hr style="margin-top: 40px; margin-bottom:10px">
     <div style='text-align: center; color: grey; font-size: 0.9em;'>
