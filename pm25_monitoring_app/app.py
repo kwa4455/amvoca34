@@ -145,7 +145,7 @@ if entry_type == "START":
         st.markdown("#### Initial Atmospheric Conditions")
         start_temp = st.number_input("Temperature (°C)", step=0.1)
         start_rh = st.number_input("Relative Humidity (%)", step=0.1)
-        start_pressure = st.number_input("Pressure (hPa)", step=0.1)
+        start_pressure = st.number_input("Pressure (mbar)", step=0.1)
         start_weather = st.text_input("Weather")
         start_wind = st.text_input("Wind Speed and Direction")
 
@@ -176,7 +176,7 @@ elif entry_type == "STOP":
         st.markdown("#### Final Atmospheric Conditions")
         stop_temp = st.number_input("Final Temperature (°C)", step=0.1)
         stop_rh = st.number_input("Final Relative Humidity (%)", step=0.1)
-        stop_pressure = st.number_input("Final Pressure (hPa)", step=0.1)
+        stop_pressure = st.number_input("Final Pressure (mbar)", step=0.1)
         stop_weather = st.text_input("Final Weather")
         stop_wind = st.text_input("Final Wind Speed and Direction")
 
@@ -262,7 +262,7 @@ with st.expander("✏️ Edit Submitted Records"):
                     time = st.time_input("Time", value=pd.to_datetime(record_data["Time"]).time())
                     temperature = st.number_input("Temperature (°C)", value=float(record_data["Temperature (°C)"]), step=0.1)
                     rh = st.number_input("Relative Humidity (%)", value=float(record_data["RH (%)"]), step=0.1)
-                    pressure = st.number_input("Pressure (hPa)", value=float(record_data["Pressure (hPa)"]), step=0.1)
+                    pressure = st.number_input("Pressure (mbar)", value=float(record_data["Pressure (hPa)"]), step=0.1)
                     weather = st.text_input("Weather", value=record_data["Weather"])
                     wind = st.text_input("Wind", value=record_data["Wind"])
                     elapsed_time = st.number_input("Elapsed Time (min)", value=float(record_data["Elapsed Time (min)"]), step=1.0)
