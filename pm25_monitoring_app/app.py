@@ -49,31 +49,37 @@ def add_data(row):
     sheet.append_row(row)
 
 def merge_start_stop(df):
-    df_start = df[df["Entry Type"] == "START"].copy()
-    df_stop = df[df["Entry Type"] == "STOP"].copy()
+    # Separate START and STOP records
+    start_df = df[df["Entry Type"] == "START"].copy()
+    stop_df = df[df["Entry Type"] == "STOP"].copy()
 
-    merge_cols = [ "ID", "Site", "Monitoring Officer", "Driver"]
-    merged = pd.merge(
-        df_start,
-        df_stop,
-        on=merge_cols,
-        suffixes=("_Start", "_Stop")
-    )
-    # Compute elapsed time difference (if both present and numeric)
-    merged["Elapsed Time Diff (min)"] = merged["Elapsed Time (min)_Stop"] - merged["Elapsed Time (min)_Start"]
-    return merged
+    # Ensure common key for merging (e.g., ID and Site)
+    merge_keys = ["ID", "Site"]
+
+    # Rename columns to distinguish between START and STOP
+    start_df = start_df.rename(columns=lambda x: f"{x}_Start" if x not in merge_keys else x)
+    stop_df = stop_df.rename(columns=lambda x: f"{x}_Stop" if x not in merge_keys else x)
+
+    # Merge START and STOP records on ID and Site
+    merged_df = pd.merge(start_df, stop_df, on=merge_keys, how="inner")
+
+    # Calculate elapsed time difference if columns exist
+    if "Elapsed Time (min)_Start" in merged_df.columns and "Elapsed Time (min)_Stop" in merged_df.columns:
+        merged_df["Elapsed Time Diff (min)"] = (
+            merged_df["Elapsed Time (min)_Stop"] - merged_df["Elapsed Time (min)_Start"]
+        )
+
+    return merged_df
+
+def save_merged_data_to_sheet(df, spreadsheet, sheet_name):
+    if sheet_name in [ws.title for ws in spreadsheet.worksheets()]:
+        sheet = spreadsheet.worksheet(sheet_name)
+        spreadsheet.del_worksheet(sheet)
+    sheet = spreadsheet.add_worksheet(title=sheet_name, rows="1000", cols="50")
+    sheet.update([df.columns.tolist()] + df.values.tolist())
 
 
-def save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=MERGED_SHEET):
-    try:
-        merged_sheet = spreadsheet.worksheet(sheet_name)
-        spreadsheet.del_worksheet(merged_sheet)
-    except gspread.WorksheetNotFound:
-        pass
-    merged_sheet = spreadsheet.add_worksheet(title=sheet_name, rows="1000", cols="20")
-    merged_sheet.append_row(merged_df.columns.tolist())
-    for _, row in merged_df.iterrows():
-        merged_sheet.append_row(row.astype(str).tolist())
+
 
 # === Streamlit UI ===
 st.set_page_config(page_title="EPA Ghana | PM₂.₅ Monitoring", layout="wide")
@@ -210,6 +216,9 @@ else:
             df = df[(df["Submitted At"].dt.date >= start) & (df["Submitted At"].dt.date <= end)]
 
     st.dataframe(df, use_container_width=True)
+    
+    df = load_data_from_sheet(sheet)
+
     
     merged_df = merge_start_stop(df)
     if not merged_df.empty:
