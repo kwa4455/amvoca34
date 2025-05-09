@@ -37,10 +37,11 @@ except gspread.WorksheetNotFound:
     ])
 
 # === Functions ===
-def read_data():
-    df = pd.DataFrame(sheet.get_all_records())
-    if not df.empty:
-        df["Submitted At"] = pd.to_datetime(df["Submitted At"])
+def load_data_from_sheet(sheet):
+    data = sheet.get_all_records()
+    df = pd.DataFrame(data)
+    df["Submitted At"] = pd.to_datetime(df["Submitted At"])
+    df["Date"] = pd.to_datetime(df["Date"])
     return df
 
 def add_data(row):
@@ -274,7 +275,6 @@ with st.expander("✏️ Edit Submitted Records"):
                     for col_index, value in enumerate(updated_data, start=1):
                         sheet.update_cell(row_number, col_index, value)
 
-                    st.success("Record updated successfully!")
                     
                     df = load_data_from_sheet(sheet)
                     df["Row Number"] = df.index + 2
