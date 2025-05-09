@@ -254,8 +254,8 @@ if not df.empty:
             wind = st.text_input("Wind", value=record_data["Wind"])
             elapsed_time = st.number_input("Elapsed Time (min)", value=float(record_data["Elapsed Time (min)"]), step=1.0)
             flow_rate = st.number_input("Flow Rate (L/min)", value=float(record_data["Flow Rate (L/min)"]), step=0.1)
-            observation = st.text_area("Observation", value=record_data["Observation"])
-
+            observation_value = record_data["Observation"] if "Observation" in record_data else ""
+            observation = st.text_area("Observation", value=observation_value)
             submitted = st.form_submit_button("Update Record")
 
             if submitted:
