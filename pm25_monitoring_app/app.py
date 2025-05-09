@@ -209,7 +209,7 @@ else:
             df = df[(df["Submitted At"].dt.date >= start) & (df["Submitted At"].dt.date <= end)]
 
     st.dataframe(df, use_container_width=True)
-
+    
     merged_df = merge_start_stop(df)
     if not merged_df.empty:
         save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=MERGED_SHEET)
@@ -217,6 +217,7 @@ else:
         st.dataframe(merged_df, use_container_width=True)
     else:
         st.warning("No matching START and STOP records found to merge.")
+
 with st.sidebar:
     sentiment_mapping = ["one", "two", "three", "four", "five"]
     selected = st.feedback("stars")
@@ -274,6 +275,21 @@ with st.expander("✏️ Edit Submitted Records"):
                         sheet.update_cell(row_number, col_index, value)
 
                     st.success("Record updated successfully!")
+                    
+                    df = load_data_from_sheet(sheet)
+                    df["Row Number"] = df.index + 2
+                    df["Record ID"] = df.apply(
+                        lambda x: f"{x['Entry Type']} | {x['ID']} | {x['Site']} | {x['Submitted At'].strftime('%Y-%m-%d %H:%M')}",
+                        axis=1
+                    )
+                    merged_df = merge_start_stop(df)
+                    if not merged_df.empty:
+                        save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=MERGED_SHEET)
+                        st.success("Merged records saved to Google Sheets.")
+                        st.dataframe(merged_df, use_container_width=True)
+                    else:
+                        st.warning("No matching START and STOP records found to merge.")
+                    
 
 st.markdown("""
     <hr style="margin-top: 40px; margin-bottom:10px">
