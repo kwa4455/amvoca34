@@ -234,7 +234,10 @@ with st.sidebar:
     if selected is not None:
         st.markdown(f"You selected {sentiment_mapping[selected]} star(s).")
 
-with st.expander("✏️ Edit Submitted Records"):
+if "edit_expanded" not in st.session_state:
+    st.session_state.edit_expanded = False
+    
+with st.expander("✏️ Edit Submitted Records",expanded=st.session_state.edit_expanded):
     if df.empty:
         st.warning("No records available to edit.")
     else:
