@@ -79,42 +79,50 @@ def save_merged_data_to_sheet(df, spreadsheet, sheet_name):
     sheet.update([df.columns.tolist()] + df.values.tolist())
 
 
+import pandas as pd
+import streamlit as st
+
+# Function to Edit Submitted Records
 def edit_submitted_record(df, sheet, spreadsheet, merged_sheet_name, load_data_from_sheet, merge_start_stop, save_merged_data_to_sheet):
+    # Initialize session state to track record selection and expander state
+    if "selected_record" not in st.session_state:
+        st.session_state.selected_record = None
     if "edit_expanded" not in st.session_state:
         st.session_state.edit_expanded = False
-    if "selected_record" not in st.session_state:
-        st.session_state.selected_record = ""
 
     if df.empty:
         st.warning("No records available to edit.")
         return
 
-    # Add metadata to the DataFrame
+    # Add metadata to DataFrame for easy record identification
     df["Row Number"] = df.index + 2
     df["Record ID"] = df.apply(
         lambda x: f"{x['Entry Type']} | {x['ID']} | {x['Site']} | {x['Submitted At'].strftime('%Y-%m-%d %H:%M')}",
         axis=1
     )
 
-    # === Selection outside the expander ===
+    # Select a record to edit
     record_options = [""] + df["Record ID"].tolist()
     selected = st.selectbox("Select a record to edit:", record_options, index=record_options.index(st.session_state.selected_record))
 
+    # Update selected record and expander state
     if selected and selected != st.session_state.selected_record:
         st.session_state.selected_record = selected
-        st.session_state.edit_expanded = True
+        st.session_state.edit_expanded = True  # Expand the section when a record is selected
 
-    # === Editing Expander ===
+    # Edit section (Expander) that toggles based on state
     with st.expander("✏️ Edit Submitted Records", expanded=st.session_state.edit_expanded):
         if not st.session_state.selected_record:
-            st.info("Select a record to begin editing.")
+            st.info("Please select a record to edit.")
             return
 
         try:
+            # Find the selected record
             selected_index = df[df["Record ID"] == st.session_state.selected_record].index[0]
             record_data = df.loc[selected_index]
             row_number = record_data["Row Number"]
 
+            # Create a form to edit the selected record
             with st.form("edit_form"):
                 entry_type = st.selectbox("Entry Type", ["START", "STOP"], index=["START", "STOP"].index(record_data["Entry Type"]))
                 site_id = st.text_input("ID", value=record_data["ID"])
@@ -133,6 +141,7 @@ def edit_submitted_record(df, sheet, spreadsheet, merged_sheet_name, load_data_f
                 observation = st.text_area("Observation", value=record_data.get("Observation", ""))
                 submitted = st.form_submit_button("Update Record")
 
+                # When user submits the form
                 if submitted:
                     updated_data = [
                         entry_type, site_id, site, monitoring_officer, driver,
@@ -141,15 +150,17 @@ def edit_submitted_record(df, sheet, spreadsheet, merged_sheet_name, load_data_f
                         elapsed_time, flow_rate, observation
                     ]
 
+                    # Update the record in the Google Sheets
                     for col_index, value in enumerate(updated_data, start=1):
                         sheet.update_cell(row_number, col_index, value)
 
                     st.success("Record updated successfully!")
 
-                    # Reset state and refresh data
+                    # Reset session state (collapse the expander and reset selection)
+                    st.session_state.selected_record = None
                     st.session_state.edit_expanded = False
-                    st.session_state.selected_record = ""
 
+                    # Reload the data and merge START/STOP records
                     df = load_data_from_sheet(sheet)
                     df["Row Number"] = df.index + 2
                     df["Record ID"] = df.apply(
@@ -157,6 +168,7 @@ def edit_submitted_record(df, sheet, spreadsheet, merged_sheet_name, load_data_f
                         axis=1
                     )
 
+                    # Merge the data if applicable
                     merged_df = merge_start_stop(df)
                     if not merged_df.empty:
                         save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=merged_sheet_name)
