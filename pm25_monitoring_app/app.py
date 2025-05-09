@@ -180,7 +180,6 @@ def edit_submitted_record(df, sheet, spreadsheet, merged_sheet_name, load_data_f
             st.error(f"An error occurred while editing: {e}")
 
 
-
 # === Streamlit UI ===
 st.set_page_config(page_title="EPA Ghana | PM₂.₅ Monitoring", layout="wide")
 
