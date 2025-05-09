@@ -31,7 +31,7 @@ except gspread.WorksheetNotFound:
     sheet = spreadsheet.add_worksheet(title=MAIN_SHEET, rows="100", cols="20")
     sheet.append_row([
         "Entry Type", "ID", "Site", "Monitoring Officer", "Driver",
-        "Date", "Time", "Temperature (°C)", "RH (%)", "Pressure (hPa)",
+        "Date", "Time", "Temperature (°C)", "RH (%)", "Pressure (mbar)",
         "Weather", "Wind", "Elapsed Time (min)", "Flow Rate (L/min)", "Observation",
         "Submitted At"
     ])
