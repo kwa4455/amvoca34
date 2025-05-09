@@ -145,7 +145,7 @@ if entry_type == "START":
         st.markdown("#### Initial Atmospheric Conditions")
         start_temp = st.number_input("Temperature (°C)", step=0.1)
         start_rh = st.number_input("Relative Humidity (%)", step=0.1)
-        start_pressure = st.number_input("Pressure (mbar)", step=0.1)
+        start_pressure = st.number_input("Pressure(mbar)", step=0.1)
         start_weather = st.text_input("Weather")
         start_wind = st.text_input("Wind Speed and Direction")
 
@@ -176,7 +176,7 @@ elif entry_type == "STOP":
         st.markdown("#### Final Atmospheric Conditions")
         stop_temp = st.number_input("Final Temperature (°C)", step=0.1)
         stop_rh = st.number_input("Final Relative Humidity (%)", step=0.1)
-        stop_pressure = st.number_input("Final Pressure (mbar)", step=0.1)
+        stop_pressure = st.number_input("Final Pressure(mbar)", step=0.1)
         stop_weather = st.text_input("Final Weather")
         stop_wind = st.text_input("Final Wind Speed and Direction")
 
