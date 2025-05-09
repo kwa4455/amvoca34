@@ -225,7 +225,7 @@ with st.sidebar:
 
 
 with st.expander("✏️ Edit Submitted Records"):
-    st.header("Edit Submitted Records")
+   
 
     if not df.empty:
         df["Row Number"] = df.index + 2  # Adjust for header row in Google Sheets
