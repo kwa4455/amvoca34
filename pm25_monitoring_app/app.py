@@ -30,9 +30,9 @@ try:
 except gspread.WorksheetNotFound:
     sheet = spreadsheet.add_worksheet(title=MAIN_SHEET, rows="100", cols="20")
     sheet.append_row([
-        "Entry Type", "Site ID", "Site", "Monitoring Officer", "Driver",
+        "Entry Type", "ID", "Site", "Monitoring Officer", "Driver",
         "Date", "Time", "Temperature (°C)", "RH (%)", "Pressure (hPa)",
-        "Weather", "Wind", "Elapsed Time (min)", "Flow Rate (L/min)", "Notes",
+        "Weather", "Wind", "Elapsed Time (min)", "Flow Rate (L/min)", "Observation",
         "Submitted At"
     ])
 
@@ -51,7 +51,7 @@ def merge_start_stop(df):
     df_start = df[df["Entry Type"] == "START"].copy()
     df_stop = df[df["Entry Type"] == "STOP"].copy()
 
-    merge_cols = [ "Site", "Monitoring Officer", "Driver"]
+    merge_cols = [ "ID", "Site", "Monitoring Officer", "Driver"]
     merged = pd.merge(
         df_start,
         df_stop,
@@ -70,7 +70,7 @@ def save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=MERGED_SHEET):
         spreadsheet.del_worksheet(merged_sheet)
     except gspread.WorksheetNotFound:
         pass
-    merged_sheet = spreadsheet.add_worksheet(title=sheet_name, rows="100", cols="20")
+    merged_sheet = spreadsheet.add_worksheet(title=sheet_name, rows="1000", cols="20")
     merged_sheet.append_row(merged_df.columns.tolist())
     for _, row in merged_df.iterrows():
         merged_sheet.append_row(row.astype(str).tolist())
@@ -132,9 +132,9 @@ if entry_type:
 
 # === Start Day Observation ===
 if entry_type == "START":
-    with st.expander("Start Day Observation", expanded=True):
+    with st.expander("Start Day Monitoring", expanded=True):
         start_date = st.date_input("Start Date", value=datetime.today())
-        start_obs = st.text_area("First Day Observation Notes")
+        start_obs = st.text_area("First Day Observation")
 
         st.markdown("#### Initial Atmospheric Conditions")
         start_temp = st.number_input("Temperature (°C)", step=0.1)
@@ -163,9 +163,9 @@ if entry_type == "START":
 
 # === Stop Day Observation ===
 elif entry_type == "STOP":
-    with st.expander("Stop Day Observation", expanded=True):
+    with st.expander("Stop Day Monitoring", expanded=True):
         stop_date = st.date_input("Stop Date", value=datetime.today())
-        stop_obs = st.text_area("Final Day Observation Notes")
+        stop_obs = st.text_area("Final Day Observation")
 
         st.markdown("#### Final Atmospheric Conditions")
         stop_temp = st.number_input("Final Temperature (°C)", step=0.1)
