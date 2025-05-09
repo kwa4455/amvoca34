@@ -236,8 +236,8 @@ with st.sidebar:
 
 if "edit_expanded" not in st.session_state:
     st.session_state.edit_expanded = False
-    
-with st.expander("✏️ Edit Submitted Records",expanded=st.session_state.edit_expanded):
+
+with st.expander("✏️ Edit Submitted Records", expanded=st.session_state.edit_expanded):
     if df.empty:
         st.warning("No records available to edit.")
     else:
@@ -248,9 +248,10 @@ with st.expander("✏️ Edit Submitted Records",expanded=st.session_state.edit_
                 axis=1
             )
 
-            selected_record = st.selectbox("Select a record to edit:", df["Record ID"].tolist())
+            selected_record = st.selectbox("Select a record to edit:", [""] + df["Record ID"].tolist())
 
             if selected_record:
+                st.session_state.edit_expanded = True  # Expand on selection
                 selected_index = df[df["Record ID"] == selected_record].index[0]
                 record_data = df.loc[selected_index]
                 row_number = record_data["Row Number"]
@@ -265,7 +266,7 @@ with st.expander("✏️ Edit Submitted Records",expanded=st.session_state.edit_
                     time = st.time_input("Time", value=pd.to_datetime(record_data["Time"]).time())
                     temperature = st.number_input("Temperature (°C)", value=float(record_data["Temperature (°C)"]), step=0.1)
                     rh = st.number_input("Relative Humidity (%)", value=float(record_data["RH (%)"]), step=0.1)
-                    pressure = st.number_input("Pressure (hPa)", value=float(record_data["Pressure (hPa)"]), step=0.1)
+                    pressure = st.number_input("Pressure (mbar)", value=float(record_data["Pressure (mbar)"]), step=0.1)
                     weather = st.text_input("Weather", value=record_data["Weather"])
                     wind = st.text_input("Wind", value=record_data["Wind"])
                     elapsed_time = st.number_input("Elapsed Time (min)", value=float(record_data["Elapsed Time (min)"]), step=1.0)
@@ -285,8 +286,9 @@ with st.expander("✏️ Edit Submitted Records",expanded=st.session_state.edit_
                             sheet.update_cell(row_number, col_index, value)
 
                         st.success("Record updated successfully!")
+                        st.session_state.edit_expanded = False  # Collapse after submission
 
-                        # Reload and merge data
+                        # Reload and merge
                         df = load_data_from_sheet(sheet)
                         df["Row Number"] = df.index + 2
                         df["Record ID"] = df.apply(
