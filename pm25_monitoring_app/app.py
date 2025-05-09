@@ -48,19 +48,30 @@ def add_data(row):
     sheet.append_row(row)
 
 def merge_start_stop(df):
+    df.columns = df.columns.str.strip()  # Clean up column names
+
     df_start = df[df["Entry Type"] == "START"].copy()
     df_stop = df[df["Entry Type"] == "STOP"].copy()
 
-    merge_cols = [ "ID", "Site", "Monitoring Officer", "Driver"]
-    merged = pd.merge(
-        df_start,
-        df_stop,
-        on=merge_cols,
-        suffixes=("_Start", "_Stop")
-    )
-    # Compute elapsed time difference (if both present and numeric)
-    merged["Elapsed Time Diff (min)"] = merged["Elapsed Time (min)_Stop"] - merged["Elapsed Time (min)_Start"]
-    return merged
+    expected_cols = ["ID", "Site", "Monitoring Officer", "Driver"]
+    available_cols = [col for col in expected_cols if col in df_start.columns and col in df_stop.columns]
+
+    if not available_cols:
+        st.error("Merge failed: None of the expected columns were found in both START and STOP data.")
+        return pd.DataFrame()  # return empty if merge not possible
+
+    try:
+        merged = pd.merge(
+            df_start,
+            df_stop,
+            on=available_cols,
+            suffixes=("_Start", "_Stop")
+        )
+        merged["Elapsed Time Diff (min)"] = merged["Elapsed Time (min)_Stop"] - merged["Elapsed Time (min)_Start"]
+        return merged
+    except Exception as e:
+        st.error(f"Merge error: {e}")
+        return pd.DataFrame()
 
 
 
