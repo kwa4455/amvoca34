@@ -234,71 +234,73 @@ with st.sidebar:
     if selected is not None:
         st.markdown(f"You selected {sentiment_mapping[selected]} star(s).")
 
-
 with st.expander("✏️ Edit Submitted Records"):
-   
+    if df.empty:
+        st.warning("No records available to edit.")
+    else:
+        try:
+            df["Row Number"] = df.index + 2
+            df["Record ID"] = df.apply(
+                lambda x: f"{x['Entry Type']} | {x['ID']} | {x['Site']} | {x['Submitted At'].strftime('%Y-%m-%d %H:%M')}",
+                axis=1
+            )
 
-    if not df.empty:
-        df["Row Number"] = df.index + 2  # Adjust for header row in Google Sheets
+            selected_record = st.selectbox("Select a record to edit:", df["Record ID"].tolist())
 
-        # Create a unique identifier
-        df["Record ID"] = df.apply(
-            lambda x: f"{x['Entry Type']} | {x['ID']} | {x['Site']} | {x['Submitted At'].strftime('%Y-%m-%d %H:%M')}",
-            axis=1
-        )
+            if selected_record:
+                selected_index = df[df["Record ID"] == selected_record].index[0]
+                record_data = df.loc[selected_index]
+                row_number = record_data["Row Number"]
 
-        selected_record = st.selectbox("Select a record to edit:", df["Record ID"].tolist())
+                with st.form("edit_form"):
+                    entry_type = st.selectbox("Entry Type", ["START", "STOP"], index=["START", "STOP"].index(record_data["Entry Type"]))
+                    site_id = st.text_input("ID", value=record_data["ID"])
+                    site = st.text_input("Site", value=record_data["Site"])
+                    monitoring_officer = st.text_input("Monitoring Officer", value=record_data["Monitoring Officer"])
+                    driver = st.text_input("Driver", value=record_data["Driver"])
+                    date = st.date_input("Date", value=pd.to_datetime(record_data["Date"]))
+                    time = st.time_input("Time", value=pd.to_datetime(record_data["Time"]).time())
+                    temperature = st.number_input("Temperature (°C)", value=float(record_data["Temperature (°C)"]), step=0.1)
+                    rh = st.number_input("Relative Humidity (%)", value=float(record_data["RH (%)"]), step=0.1)
+                    pressure = st.number_input("Pressure (hPa)", value=float(record_data["Pressure (hPa)"]), step=0.1)
+                    weather = st.text_input("Weather", value=record_data["Weather"])
+                    wind = st.text_input("Wind", value=record_data["Wind"])
+                    elapsed_time = st.number_input("Elapsed Time (min)", value=float(record_data["Elapsed Time (min)"]), step=1.0)
+                    flow_rate = st.number_input("Flow Rate (L/min)", value=float(record_data["Flow Rate (L/min)"]), step=0.1)
+                    observation = st.text_area("Observation", value=record_data.get("Observation", ""))
+                    submitted = st.form_submit_button("Update Record")
 
-        if selected_record:
-            selected_index = df[df["Record ID"] == selected_record].index[0]
-            record_data = df.loc[selected_index]
-            row_number = record_data["Row Number"]
+                    if submitted:
+                        updated_data = [
+                            entry_type, site_id, site, monitoring_officer, driver,
+                            date.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"),
+                            temperature, rh, pressure, weather, wind,
+                            elapsed_time, flow_rate, observation
+                        ]
 
-            with st.form("edit_form"):
-                entry_type = st.selectbox("Entry Type", ["START", "STOP"], index=["START", "STOP"].index(record_data["Entry Type"]))
-                site_id = st.text_input("ID", value=record_data["ID"])
-                site = st.text_input("Site", value=record_data["Site"])
-                monitoring_officer = st.text_input("Monitoring Officer", value=record_data["Monitoring Officer"])
-                driver = st.text_input("Driver", value=record_data["Driver"])
-                date = st.date_input("Date", value=pd.to_datetime(record_data["Date"]))
-                time = st.time_input("Time", value=pd.to_datetime(record_data["Time"]).time())
-                temperature = st.number_input("Temperature (°C)", value=float(record_data["Temperature (°C)"]), step=0.1)
-                rh = st.number_input("Relative Humidity (%)", value=float(record_data["RH (%)"]), step=0.1)
-                pressure = st.number_input("Pressure (hPa)", value=float(record_data["Pressure (hPa)"]), step=0.1)
-                weather = st.text_input("Weather", value=record_data["Weather"])
-                wind = st.text_input("Wind", value=record_data["Wind"])
-                elapsed_time = st.number_input("Elapsed Time (min)", value=float(record_data["Elapsed Time (min)"]), step=1.0)
-                flow_rate = st.number_input("Flow Rate (L/min)", value=float(record_data["Flow Rate (L/min)"]), step=0.1)
-                observation_value = record_data["Observation"] if "Observation" in record_data else ""
-                observation = st.text_area("Observation", value=observation_value)
-                submitted = st.form_submit_button("Update Record")
+                        for col_index, value in enumerate(updated_data, start=1):
+                            sheet.update_cell(row_number, col_index, value)
 
-                if submitted:
-                    updated_data = [
-                        entry_type, site_id, site, monitoring_officer, driver,
-                        date.strftime("%Y-%m-%d"), time.strftime("%H:%M:%S"),
-                        temperature, rh, pressure, weather, wind,
-                        elapsed_time, flow_rate, observation
-                    ]
+                        st.success("Record updated successfully!")
 
-                    for col_index, value in enumerate(updated_data, start=1):
-                        sheet.update_cell(row_number, col_index, value)
+                        # Reload and merge data
+                        df = load_data_from_sheet(sheet)
+                        df["Row Number"] = df.index + 2
+                        df["Record ID"] = df.apply(
+                            lambda x: f"{x['Entry Type']} | {x['ID']} | {x['Site']} | {x['Submitted At'].strftime('%Y-%m-%d %H:%M')}",
+                            axis=1
+                        )
 
-                    
-                    df = load_data_from_sheet(sheet)
-                    df["Row Number"] = df.index + 2
-                    df["Record ID"] = df.apply(
-                        lambda x: f"{x['Entry Type']} | {x['ID']} | {x['Site']} | {x['Submitted At'].strftime('%Y-%m-%d %H:%M')}",
-                        axis=1
-                    )
-                    merged_df = merge_start_stop(df)
-                    if not merged_df.empty:
-                        save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=MERGED_SHEET)
-                        st.success("Merged records saved to Google Sheets.")
-                        st.dataframe(merged_df, use_container_width=True)
-                    else:
-                        st.warning("No matching START and STOP records found to merge.")
-                    
+                        merged_df = merge_start_stop(df)
+                        if not merged_df.empty:
+                            save_merged_data_to_sheet(merged_df, spreadsheet, sheet_name=MERGED_SHEET)
+                            st.success("Merged records saved to Google Sheets.")
+                            st.dataframe(merged_df, use_container_width=True)
+                        else:
+                            st.warning("No matching START and STOP records found to merge.")
+
+        except Exception as e:
+            st.error(f"An error occurred while editing: {e}")
 
 st.markdown("""
     <hr style="margin-top: 40px; margin-bottom:10px">
