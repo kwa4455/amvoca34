@@ -221,16 +221,7 @@ def cleaned(df):
     df = df.merge(sufficient_sites, on=['site', 'month'])
     return df
 
-def remove_timezone_and_convert(df):
-    """
-    This function checks for timezone-aware datetime columns and removes timezone
-    information before performing any further operations like converting to periods.
-    """
-    for col in df.select_dtypes(include=['datetime']):
-        if df[col].dt.tz is not None:  # Check if datetime column has timezone info
-            df[col] = df[col].dt.tz_localize(None)  # Remove timezone info
-    
-    return df
+
 
 def parse_dates(df, format=None):
     """
@@ -257,7 +248,7 @@ def standardize_columns(df):
     for col in df.columns:
         col_lower = col.strip().lower()
         if col_lower in [c.lower() for c in pm25_cols]:
-            df.rename(columns={col: 'pm25'}, inplace=True)
+            df.rename(columns={col: 'corrected_pm25'}, inplace=True)
         if col_lower in [c.lower() for c in pm10_cols]:
             df.rename(columns={col: 'pm10'}, inplace=True)
         if col_lower in [c.lower() for c in site_cols]:
