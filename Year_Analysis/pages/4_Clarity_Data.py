@@ -221,15 +221,21 @@ def cleaned(df):
     df = df.merge(sufficient_sites, on=['site', 'month'])
     return df
 
-def parse_dates(df):
+def parse_dates(df, format=None):
+    """
+    Attempts to parse any column with 'date' or 'time' in its name to datetime.
+    Assigns to a new 'datetime' column and drops rows with unparseable dates.
+    """
     for col in df.columns:
         if 'date' in col.lower() or 'time' in col.lower():
             try:
-                df['datetime'] = pd.to_datetime(df[col], errors='coerce', infer_datetime_format=True)
+                df['datetime'] = pd.to_datetime(df[col], errors='coerce', format=format)
                 df = df.dropna(subset=['datetime'])
                 return df
-            except:
+            except Exception as e:
+                print(f"Warning: Failed to parse {col} - {e}")
                 continue
+    print("Warning: No datetime column could be parsed.")
     return df
 
 def standardize_columns(df):
