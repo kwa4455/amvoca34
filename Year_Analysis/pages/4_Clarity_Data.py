@@ -206,7 +206,8 @@ def cleaned(df):
     required_columns = ['datetime', 'site', 'corrected_pm25', 'pm10']
     df = df[[col for col in required_columns if col in df.columns]]
     df = df.dropna(axis=1, how='all').dropna()
-    df['datetime'] = df['datetime'].dt.tz_localize(None)
+
+    df = remove_timezone_and_convert(df)
 
     df['year'] = df['datetime'].dt.year
     df['month'] = df['datetime'].dt.to_period('M').astype(str)
@@ -219,6 +220,17 @@ def cleaned(df):
     daily_counts = df.groupby(['site', 'month'])['day'].nunique().reset_index(name='daily_counts')
     sufficient_sites = daily_counts[daily_counts['daily_counts'] >= 20][['site', 'month']]
     df = df.merge(sufficient_sites, on=['site', 'month'])
+    return df
+
+def remove_timezone_and_convert(df):
+    """
+    This function checks for timezone-aware datetime columns and removes timezone
+    information before performing any further operations like converting to periods.
+    """
+    for col in df.select_dtypes(include=['datetime']):
+        if df[col].dt.tz is not None:  # Check if datetime column has timezone info
+            df[col] = df[col].dt.tz_localize(None)  # Remove timezone info
+    
     return df
 
 def parse_dates(df, format=None):
