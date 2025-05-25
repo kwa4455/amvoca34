@@ -207,7 +207,6 @@ def cleaned(df):
     df = df[[col for col in required_columns if col in df.columns]]
     df = df.dropna(axis=1, how='all').dropna()
 
-    df = remove_timezone_and_convert(df)
 
     df['year'] = df['datetime'].dt.year
     df['month'] = df['datetime'].dt.to_period('M').astype(str)
