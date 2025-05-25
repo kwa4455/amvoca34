@@ -263,7 +263,7 @@ def compute_aggregates(df, label, pollutant):
     aggregates[f'{label} - Yearly Avg ({pollutant})'] = df.groupby(['year', 'site'])[pollutant].mean().reset_index().round(1)
     aggregates[f'{label} - Day of Week Avg ({pollutant})'] = df.groupby(['dayofweek', 'site'])[pollutant].mean().reset_index().round(1)
     aggregates[f'{label} - Weekday Type Avg ({pollutant})'] = df.groupby(['weekday_type', 'site'])[pollutant].mean().reset_index().round(1)
-    aggregates[f'{label} - Season Avg ({pollutant})'] = df.groupby(['season', 'site'])[pollutant].mean().reset_index().round(1)
+    aggregates[f'{label} - Season Avg ({pollutant})'] = df.groupby(['year','season', 'site'])[pollutant].mean().reset_index().round(1)
     return aggregates
 
 def calculate_exceedances(df):
@@ -284,11 +284,11 @@ def calculate_exceedances(df):
     return exceedance
 
 def calculate_min_max(df):
-    daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
+    daily_avg = df.groupby(['site', 'day', 'year'], as_index=False).agg({
         'corrected_pm25': 'mean',
         'pm10': 'mean'
     })
-    df_min_max = daily_avg.groupby(['year', 'site', 'month'], as_index=False).agg(
+    df_min_max = daily_avg.groupby(['year', 'site'], as_index=False).agg(
         daily_avg_pm10_max=('pm10', lambda x: round(x.max(), 1)),
         daily_avg_pm10_min=('pm10', lambda x: round(x.min(), 1)),
         daily_avg_pm25_max=('corrected_pm25', lambda x: round(x.max(), 1)),
@@ -427,7 +427,7 @@ if uploaded_files:
                 ('Yearly Avg', ['year', 'site']),
                 ('Day of Week Avg', ['dayofweek', 'site']),
                 ('Weekday Type Avg', ['weekday_type', 'site']),
-                ('Season Avg', ['season', 'site'])
+                ('Season Avg', ['year','season', 'site'])
             ]
             for level_name, group_keys in aggregate_levels:
                 agg_label = f"{label} - {level_name}"
