@@ -206,7 +206,7 @@ def cleaned(df):
     required_columns = ['datetime', 'site', 'corrected_pm25', 'pm10']
     df = df[[col for col in required_columns if col in df.columns]]
     df = df.dropna(axis=1, how='all').dropna()
-
+    df['datetime'] = df['datetime'].dt.tz_localize(None)
 
     df['year'] = df['datetime'].dt.year
     df['month'] = df['datetime'].dt.to_period('M').astype(str)
