@@ -385,7 +385,7 @@ def compute_aggregates(df, label, pollutant):
     aggregates[f'{label} - Yearly Avg ({pollutant})'] = df.groupby(['year', 'site'])[pollutant].mean().reset_index().round(1)
     aggregates[f'{label} - Day of Week Avg ({pollutant})'] = df.groupby(['dayofweek', 'site'])[pollutant].mean().reset_index().round(1)
     aggregates[f'{label} - Weekday Type Avg ({pollutant})'] = df.groupby(['weekday_type', 'site'])[pollutant].mean().reset_index().round(1)
-    aggregates[f'{label} - Season Avg ({pollutant})'] = df.groupby(['season', 'site'])[pollutant].mean().reset_index().round(1)
+    aggregates[f'{label} - Season Avg ({pollutant})'] = df.groupby(['year','season', 'site'])[pollutant].mean().reset_index().round(1)
     return aggregates
 
 def calculate_exceedances(df):
@@ -597,7 +597,7 @@ if uploaded_files:
                 ('Yearly Avg', ['year', 'site']),
                 ('Day of Week Avg', ['dayofweek', 'site']),
                 ('Weekday Type Avg', ['weekday_type', 'site']),
-                ('Season Avg', ['season', 'site'])
+                ('Season Avg', ['year','season', 'site'])
             ]
             for level_name, group_keys in aggregate_levels:
                 agg_label = f"{label} - {level_name}"
