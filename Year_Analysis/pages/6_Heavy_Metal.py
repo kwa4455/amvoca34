@@ -342,6 +342,7 @@ def yearly_plot_bar(df, metal_sel):
     summary_data = summary_data.round(3)
 
     # Define colors by day of week
+        # Define colors by day of week
     year_colors = {
         "Monday": "#008000",
         "Tuesday": "#b30000",
