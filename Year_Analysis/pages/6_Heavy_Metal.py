@@ -324,7 +324,7 @@ def yearly_plot_bar(df, metal_sel):
 
     # Group and aggregate
     summary_data = (
-        df.groupby(['site', 'year'])
+        df.groupby(['site', 'dayofweek'])
         .agg(agg_funcs)
         .reset_index()
     )
@@ -333,7 +333,7 @@ def yearly_plot_bar(df, metal_sel):
     summary_data.columns = ['_'.join(col).strip('_') for col in summary_data.columns]
 
     # Add sample count per group
-    summary_data['count'] = df.groupby(['site', 'year']).size().values
+    summary_data['count'] = df.groupby(['site', 'dayofweek']).size().values
 
     # Round and format
     summary_data = summary_data.round(3)
@@ -341,11 +341,13 @@ def yearly_plot_bar(df, metal_sel):
 
     # Define year colors
     year_colors = {
-        "2018": "#008000",
-        "2019": "#b30000",
-        "2020": "blue",
-        "2021": "yellow",
-        "2022": "purple"
+        "Monday": "#008000",
+        "Tuesday": "#b30000",
+        "Wednesday": "blue",
+        "Thursday": "yellow",
+        "Friday": "purple"
+        "Saturday": "orange"
+        "Sunday": "green"
     }
 
     # Metal-specific limits
@@ -360,8 +362,8 @@ def yearly_plot_bar(df, metal_sel):
     # Build plot
     fig = go.Figure()
 
-    for year in summary_data['year'].unique():
-        subset = summary_data[summary_data['year'] == year]
+    for year in summary_data['dayofweek'].unique():
+        subset = summary_data[summary_data['dayofweek'] == dayofweek]
 
         fig.add_trace(go.Bar(
             x=subset['site'],
