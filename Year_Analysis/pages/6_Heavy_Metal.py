@@ -308,6 +308,9 @@ def cleaned(df):
     return df
 
 def yearly_plot_bar(df, metal_sel):
+    import plotly.graph_objects as go
+    import pandas as pd
+
     # Check if the selected metal and its error column are in the DataFrame
     if metal_sel not in df.columns:
         return go.Figure(), pd.DataFrame()  # Return empty plot and data if missing
@@ -337,9 +340,8 @@ def yearly_plot_bar(df, metal_sel):
 
     # Round and format
     summary_data = summary_data.round(3)
-    summary_data['year'] = summary_data['year'].astype(str)
 
-    # Define year colors
+    # Define colors by day of week
     year_colors = {
         "Monday": "#008000",
         "Tuesday": "#b30000",
@@ -362,19 +364,19 @@ def yearly_plot_bar(df, metal_sel):
     # Build plot
     fig = go.Figure()
 
-    for year in summary_data['dayofweek'].unique():
-        subset = summary_data[summary_data['dayofweek'] == dayofweek]
+    for day in summary_data['dayofweek'].unique():
+        subset = summary_data[summary_data['dayofweek'] == day]
 
         fig.add_trace(go.Bar(
             x=subset['site'],
             y=subset.get(f'{metal_sel}_median', [0]),
-            name=year,
+            name=day,
             error_y=dict(
                 type='data',
                 array=subset.get(f'{error_col}_median', [0]) if has_error else None,
                 visible=has_error
             ),
-            marker_color=year_colors.get(year, 'gray'),
+            marker_color=year_colors.get(day, 'gray'),
         ))
 
     # Add standard limit line if available
@@ -400,7 +402,7 @@ def yearly_plot_bar(df, metal_sel):
         xaxis_title="Site",
         yaxis_title=f"{metal_sel.upper()} ({unit})",
         xaxis_tickangle=45,
-        legend_title_text='Year',
+        legend_title_text='Day of Week',
         template="plotly_white",
         font=dict(size=12, family="Arial"),
         plot_bgcolor='white',
