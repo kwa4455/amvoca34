@@ -753,7 +753,7 @@ with tab3:
         st.subheader(f"Violin Plot: {name}")
         metals = [m for m in metal_columns if m in df.columns]
         metal_sel = st.selectbox(f"Metal for {name}", metals, key=f"metal2_{name}")
-        fig = plot_violin_plot(df, metal_sel)
+        fig = plot_violin_plot(df, metal,selected_sites)
         st.plotly_chart(fig, use_container_width=True)
 
 # --- Tab 4: Kruskal-Wallis Test ---
