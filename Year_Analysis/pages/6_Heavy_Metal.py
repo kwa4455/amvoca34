@@ -466,34 +466,32 @@ def correlation_analysis(df, metals, selected_sites, title="Correlation Heatmap"
 
 
 
-
-def plot_violin_plot(df, metal):
-    
-    for site in df['site'].unique():
-        if site not in selected_sites:
-            continue
-     colors = {
-         "Kaneshie First Light": "#ffff00", "Mallam Market": "green", "East Legon": "red",
-         "Amasaman": "purple", "Tetteh Quarshie Roundabout": "orange", "Dansoman": "maroon", "North Industrial Area": "blue"
-     }
+def plot_violin_plot(df, metal, selected_sites):
+    # Generate automatic color palette
+    unique_sites = sorted(df['site'].unique())
+    color_palette = px.colors.qualitative.Set3 + px.colors.qualitative.Plotly
+    colors = {site: color_palette[i % len(color_palette)] for i, site in enumerate(unique_sites)}
 
     # Define units
     unit = "µg/m³" if metal.lower() == "al" else "ng/m³"
     
     fig = go.Figure()
 
-    for site in df['site'].unique():
+    for site in unique_sites:
+        if site not in selected_sites:
+            continue
+
         site_data = df[df['site'] == site]
 
         fig.add_trace(go.Violin(
             x=site_data['site'],
             y=site_data[metal],
             box_visible=True,
-            line_color=colors.get(site, 'gray'),
+            line_color=colors[site],
             name=site,
             side='positive',
             meanline_visible=True,
-            fillcolor=colors.get(site, 'lightgray'),
+            fillcolor=colors[site],
             opacity=0.6,
             points="all",
         ))
@@ -528,6 +526,8 @@ def plot_violin_plot(df, metal):
     )
 
     return fig
+
+
 
 # Function to calculate Kruskal-Wallis test and return a summary DataFrame
 def kruskal_wallis_by_test(df, metals, site_column, n_bootstrap=1000, ci_level=0.95):
