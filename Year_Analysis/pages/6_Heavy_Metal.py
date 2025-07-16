@@ -412,18 +412,28 @@ def yearly_plot_bar(df, metal_sel):
 
     return fig, summary_data
 
+import streamlit as st
+import plotly.graph_objects as go
+import pandas as pd
+import plotly.express as px
+
 def correlation_analysis(df, metals, selected_sites, title="Correlation Heatmap"):
     site_corrs = {}
 
-    for site in df['site'].unique():
+    # Use Plotly's color palette to auto-assign site colors
+    unique_sites = sorted(df['site'].unique())
+    color_palette = px.colors.qualitative.Set3 + px.colors.qualitative.Plotly
+    colors = {site: color_palette[i % len(color_palette)] for i, site in enumerate(unique_sites)}
+
+    for site in unique_sites:
         if site not in selected_sites:
             continue
-     colors = {
-         "Kaneshie First Light": "#ffff00", "Mallam Market": "green", "East Legon": "red",
-         "Amasaman": "purple", "Tetteh Quarshie Roundabout": "orange", "Dansoman": "maroon", "North Industrial Area": "blue"
-     }
 
         site_df = df[df['site'] == site][metals]
+
+        if site_df.empty:
+            continue
+
         corr_matrix = site_df.corr(method='pearson')
         site_corrs[site] = corr_matrix
 
@@ -449,9 +459,9 @@ def correlation_analysis(df, metals, selected_sites, title="Correlation Heatmap"
             width=600,
         )
 
-        st.plotly_chart(fig, use_container_width=True)  # ✅ Display here
+        st.plotly_chart(fig, use_container_width=True)
 
-    return site_corrs  # Optional, if you need to use the matrices elsewhere
+    return site_corrs
 
 
 
