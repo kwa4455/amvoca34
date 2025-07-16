@@ -345,8 +345,8 @@ def yearly_plot_bar(df, metal_sel):
         "Tuesday": "#b30000",
         "Wednesday": "blue",
         "Thursday": "yellow",
-        "Friday": "purple"
-        "Saturday": "orange"
+        "Friday": "purple",
+        "Saturday": "orange",
         "Sunday": "green"
     }
 
