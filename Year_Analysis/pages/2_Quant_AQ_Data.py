@@ -409,7 +409,7 @@ if uploaded_files:
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
 
-            for pollutant in ['corrected_pm25', 'pm10']:
+            for pollutant in ['corrected_pm25', 'pm1']:
                 if pollutant not in filtered_df.columns:
                     continue
                 aggregates = compute_aggregates(filtered_df, label, pollutant)
