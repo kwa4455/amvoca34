@@ -270,7 +270,7 @@ def calculate_exceedances(df):
         'corrected_pm25': 'mean',
         'pm10': 'mean'
     })
-    pm25_exceed = daily_avg[daily_avg['pm25'] > 35].groupby(['year', 'site']).size().reset_index(name='PM25_Exceedance_Count')
+    pm25_exceed = daily_avg[daily_avg['corrected_pm25'] > 35].groupby(['year', 'site']).size().reset_index(name='PM25_Exceedance_Count')
     pm10_exceed = daily_avg[daily_avg['pm10'] > 70].groupby(['year', 'site']).size().reset_index(name='PM10_Exceedance_Count')
     total_days = daily_avg.groupby(['year', 'site']).size().reset_index(name='Total_Records')
 
@@ -290,8 +290,8 @@ def calculate_min_max(df):
     df_min_max = daily_avg.groupby(['year', 'site', 'month'], as_index=False).agg(
         daily_avg_pm10_max=('pm10', lambda x: round(x.max(), 1)),
         daily_avg_pm10_min=('pm10', lambda x: round(x.min(), 1)),
-        daily_avg_pm25_max=('pm25', lambda x: round(x.max(), 1)),
-        daily_avg_pm25_min=('pm25', lambda x: round(x.min(), 1))
+        daily_avg_pm25_max=('corrected_pm25', lambda x: round(x.max(), 1)),
+        daily_avg_pm25_min=('corrected_pm25', lambda x: round(x.min(), 1))
     )
     return df_min_max
 
