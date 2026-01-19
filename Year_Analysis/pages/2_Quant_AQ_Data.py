@@ -202,7 +202,7 @@ st.title("📊 Quant LCS Data Analysis")
 
 def cleaned(df):
     df = df.rename(columns=lambda x: x.strip().lower())
-    required_columns = ['datetime', 'site', 'pm25', 'pm10','sample_temp', 'sample_rh']
+    required_columns = ['datetime', 'site', 'pm25', 'pm10','temp', 'rh']
     df = df[[col for col in required_columns if col in df.columns]]
     df = df.dropna(axis=1, how='all').dropna()
 
@@ -212,8 +212,8 @@ def cleaned(df):
             df = df[df[col] > 0]
 
     # Apply correction formula for PM2.5 if applicable
-    if all(col in df.columns for col in ['pm25', 'sample_temp', 'sample_rh']):
-        df['corrected_pm25'] = 0.94 * df['pm25'] - 0.34 * df['sample_temp'] - 0.08 * df['sample_rh'] + 19.82
+    if all(col in df.columns for col in ['pm25', 'temp', 'rh']):
+        df['corrected_pm25'] = 0.94 * df['pm25'] - 0.34 * df['temp'] - 0.08 * df['rh'] + 19.82
 
     df['year'] = df['datetime'].dt.year
     df['month'] = df['datetime'].dt.to_period('M').astype(str)
@@ -267,10 +267,10 @@ def compute_aggregates(df, label, pollutant):
 
 def calculate_exceedances(df):
     daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
-        'pm25': 'mean',
+        'corrected_pm25': 'mean',
         'pm10': 'mean'
     })
-    pm25_exceed = daily_avg[daily_avg['pm25'] > 35].groupby(['year', 'site']).size().reset_index(name='PM25_Exceedance_Count')
+    pm25_exceed = daily_avg[daily_avg['corrected_pm25'] > 35].groupby(['year', 'site']).size().reset_index(name='PM25_Exceedance_Count')
     pm10_exceed = daily_avg[daily_avg['pm10'] > 70].groupby(['year', 'site']).size().reset_index(name='PM10_Exceedance_Count')
     total_days = daily_avg.groupby(['year', 'site']).size().reset_index(name='Total_Records')
 
@@ -284,7 +284,7 @@ def calculate_exceedances(df):
 
 def calculate_min_max(df):
     daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
-        'pm25': 'mean',
+        'corrected_pm25': 'mean',
         'pm10': 'mean'
     })
     df_min_max = daily_avg.groupby(['year', 'site', 'month'], as_index=False).agg(
@@ -297,7 +297,7 @@ def calculate_min_max(df):
 
 def calculate_aqi_and_category(df):
     daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
-        'pm25': 'mean'
+        'corrected_pm25': 'mean'
     })
     breakpoints = [
         (0.0, 9.0, 0, 50),
@@ -315,7 +315,7 @@ def calculate_aqi_and_category(df):
                 return round(((pm - low) * (aqi_high - aqi_low) / (high - low)) + aqi_low)
         return np.nan
 
-    daily_avg['AQI'] = daily_avg['pm25'].apply(calculate_aqi)
+    daily_avg['AQI'] = daily_avg['corrected_pm25'].apply(calculate_aqi)
     conditions = [
         (daily_avg['AQI'] > 300),
         (daily_avg['AQI'] > 200),
