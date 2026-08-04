@@ -19,7 +19,7 @@ st.title("Metal Concentration Data Cleaner")
 st.caption(
     "Upload or paste laboratory results with two-level headers such as "
     "'Cd / Conc / Uncert'. The app creates Cd and Cd_error columns and "
-    "extracts the date, site code, site name, and pollutant from sample_ids."
+    "extracts the date, site code, site name, and pollutant from sample_ids. Units are retained from headers such as Al (ug/m3) and Cr (ng/m3)."
 )
 
 
@@ -543,6 +543,7 @@ def clean_numeric_series(
 # ============================================================
 def create_excel_download(
     cleaned_data: pd.DataFrame,
+    long_data: pd.DataFrame,
     units: pd.DataFrame,
     qc_summary: pd.DataFrame,
 ) -> bytes:
@@ -551,7 +552,12 @@ def create_excel_download(
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         cleaned_data.to_excel(
             writer,
-            sheet_name="Cleaned_Data",
+            sheet_name="Cleaned_Data_Wide",
+            index=False,
+        )
+        long_data.to_excel(
+            writer,
+            sheet_name="Cleaned_Data_Long",
             index=False,
         )
         units.to_excel(
@@ -742,6 +748,30 @@ for column in analyte_columns:
         below_detection_rule,
     )
 
+# Build one unit value for each analyte directly from the uploaded headers.
+# Example: Al (ug/m3) -> Al_unit = ug/m3.
+analyte_unit_map: Dict[str, str] = {}
+
+if not units_table.empty:
+    for analyte_name, unit_group in units_table.groupby(
+        "analyte",
+        sort=False,
+    ):
+        detected_units = (
+            unit_group["unit_as_uploaded"]
+            .astype("string")
+            .str.strip()
+        )
+        detected_units = detected_units[
+            detected_units.notna()
+            & detected_units.ne("")
+        ]
+
+        if not detected_units.empty:
+            analyte_unit_map[str(analyte_name)] = str(
+                detected_units.iloc[0]
+            )
+
 # ============================================================
 # USER-DEFINED SITE NAMES
 # ============================================================
@@ -816,7 +846,7 @@ elif duplicate_rule == "Remove every duplicated sample_id":
 working = working.reset_index(drop=True)
 
 # ============================================================
-# FINAL COLUMN ORDER
+# FINAL COLUMN ORDER AND UNIT COLUMNS
 # ============================================================
 metadata_columns = [
     "sample_id",
@@ -826,7 +856,8 @@ metadata_columns = [
     "pollutant",
 ]
 
-final_analyte_columns = [
+# These are the numeric concentration and error/uncertainty columns.
+numeric_analyte_columns = [
     column
     for column in working.columns
     if column not in {
@@ -835,14 +866,83 @@ final_analyte_columns = [
     }
 ]
 
+# Identify each analyte while preserving the order in the uploaded data.
+analyte_names: List[str] = []
+for column in numeric_analyte_columns:
+    analyte_name = (
+        column.removesuffix("_error")
+        if column.endswith("_error")
+        else column
+    )
+    if analyte_name not in analyte_names:
+        analyte_names.append(analyte_name)
+
+# Add a unit column beside every analyte group.
+# Example order: Al, Al_error, Al_unit, Cr, Cr_error, Cr_unit.
+ordered_measurement_columns: List[str] = []
+for analyte_name in analyte_names:
+    concentration_column = analyte_name
+    error_column = f"{analyte_name}_error"
+    unit_column = f"{analyte_name}_unit"
+
+    if concentration_column in working.columns:
+        ordered_measurement_columns.append(concentration_column)
+
+    if error_column in working.columns:
+        ordered_measurement_columns.append(error_column)
+
+    working[unit_column] = analyte_unit_map.get(
+        analyte_name,
+        pd.NA,
+    )
+    ordered_measurement_columns.append(unit_column)
+
 cleaned_output = working[
-    metadata_columns + final_analyte_columns
+    metadata_columns + ordered_measurement_columns
 ].copy()
 
 cleaned_output["date"] = pd.to_datetime(
     cleaned_output["date"],
     errors="coerce",
 ).dt.date
+
+# Also create a tidy long-format table with one standard unit column.
+long_frames: List[pd.DataFrame] = []
+
+for analyte_name in analyte_names:
+    concentration_column = analyte_name
+    error_column = f"{analyte_name}_error"
+
+    analyte_frame = cleaned_output[metadata_columns].copy()
+    analyte_frame["metal"] = analyte_name
+    analyte_frame["concentration"] = (
+        cleaned_output[concentration_column]
+        if concentration_column in cleaned_output.columns
+        else pd.NA
+    )
+    analyte_frame["error"] = (
+        cleaned_output[error_column]
+        if error_column in cleaned_output.columns
+        else pd.NA
+    )
+    analyte_frame["unit"] = analyte_unit_map.get(
+        analyte_name,
+        pd.NA,
+    )
+    long_frames.append(analyte_frame)
+
+if long_frames:
+    cleaned_long_output = pd.concat(
+        long_frames,
+        ignore_index=True,
+    )
+else:
+    cleaned_long_output = pd.DataFrame(
+        columns=(
+            metadata_columns
+            + ["metal", "concentration", "error", "unit"]
+        )
+    )
 
 # ============================================================
 # QUALITY-CONTROL SUMMARY
@@ -856,8 +956,8 @@ sample_id_valid_mask = (
 invalid_id_count = int((~sample_id_valid_mask).sum())
 valid_id_count = int(sample_id_valid_mask.sum())
 missing_numeric_count = int(
-    cleaned_output[final_analyte_columns].isna().sum().sum()
-) if final_analyte_columns else 0
+    cleaned_output[numeric_analyte_columns].isna().sum().sum()
+) if numeric_analyte_columns else 0
 
 qc_records = [
     {"check": "Rows read after header cleaning", "value": len(flattened)},
@@ -884,7 +984,7 @@ metric_columns = st.columns(4)
 metric_columns[0].metric("Final rows", len(cleaned_output))
 metric_columns[1].metric("Valid sample IDs", valid_id_count)
 metric_columns[2].metric("Invalid sample IDs", invalid_id_count)
-metric_columns[3].metric("Detected analyte columns", len(final_analyte_columns))
+metric_columns[3].metric("Detected metals", len(analyte_names))
 
 if invalid_id_count:
     # Use a NumPy Boolean array to select by row position rather than
@@ -910,11 +1010,23 @@ if invalid_id_count:
     )
 
 st.subheader("Cleaned data preview")
-st.dataframe(
-    cleaned_output.head(100),
-    use_container_width=True,
-    hide_index=True,
+preview_tab_wide, preview_tab_long = st.tabs(
+    ["Wide format", "Long format"]
 )
+
+with preview_tab_wide:
+    st.dataframe(
+        cleaned_output.head(100),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+with preview_tab_long:
+    st.dataframe(
+        cleaned_long_output.head(500),
+        use_container_width=True,
+        hide_index=True,
+    )
 
 with st.expander("Detected units", expanded=False):
     st.dataframe(
@@ -933,25 +1045,39 @@ with st.expander("Quality-control details", expanded=False):
 # ============================================================
 # DOWNLOADS
 # ============================================================
-csv_bytes = cleaned_output.to_csv(index=False).encode("utf-8-sig")
+wide_csv_bytes = cleaned_output.to_csv(
+    index=False
+).encode("utf-8-sig")
+long_csv_bytes = cleaned_long_output.to_csv(
+    index=False
+).encode("utf-8-sig")
 excel_bytes = create_excel_download(
     cleaned_output,
+    cleaned_long_output,
     units_table,
     qc_summary,
 )
 
 st.subheader("Download cleaned data")
-download_columns = st.columns(2)
+download_columns = st.columns(3)
 
 download_columns[0].download_button(
-    "Download cleaned CSV",
-    data=csv_bytes,
-    file_name="cleaned_metal_data.csv",
+    "Download wide CSV",
+    data=wide_csv_bytes,
+    file_name="cleaned_metal_data_wide.csv",
     mime="text/csv",
     use_container_width=True,
 )
 
 download_columns[1].download_button(
+    "Download long CSV",
+    data=long_csv_bytes,
+    file_name="cleaned_metal_data_long.csv",
+    mime="text/csv",
+    use_container_width=True,
+)
+
+download_columns[2].download_button(
     "Download cleaned Excel",
     data=excel_bytes,
     file_name="cleaned_metal_data.xlsx",
