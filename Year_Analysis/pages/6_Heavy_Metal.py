@@ -377,8 +377,11 @@ def flatten_lab_table(
     cleaned["sample_id"] = cleaned["sample_id"].astype("string").str.strip()
     cleaned = cleaned[
         cleaned["sample_id"].notna()
-        & (cleaned["sample_id"] != "")
+        & cleaned["sample_id"].ne("")
     ].copy()
+
+    # Reset after filtering so all later Boolean masks align correctly.
+    cleaned = cleaned.reset_index(drop=True)
 
     units = pd.DataFrame(units_records).drop_duplicates().reset_index(drop=True)
 
@@ -844,8 +847,14 @@ cleaned_output["date"] = pd.to_datetime(
 # ============================================================
 # QUALITY-CONTROL SUMMARY
 # ============================================================
-invalid_id_count = int((~parsed_ids["sample_id_valid"]).sum())
-valid_id_count = int(parsed_ids["sample_id_valid"].sum())
+sample_id_valid_mask = (
+    parsed_ids["sample_id_valid"]
+    .fillna(False)
+    .astype(bool)
+)
+
+invalid_id_count = int((~sample_id_valid_mask).sum())
+valid_id_count = int(sample_id_valid_mask.sum())
 missing_numeric_count = int(
     cleaned_output[final_analyte_columns].isna().sum().sum()
 ) if final_analyte_columns else 0
@@ -878,11 +887,17 @@ metric_columns[2].metric("Invalid sample IDs", invalid_id_count)
 metric_columns[3].metric("Detected analyte columns", len(final_analyte_columns))
 
 if invalid_id_count:
+    # Use a NumPy Boolean array to select by row position rather than
+    # allowing pandas to align potentially different index labels.
+    invalid_mask = (
+        ~parsed_ids["sample_id_valid"]
+        .fillna(False)
+        .astype(bool)
+        .to_numpy()
+    )
+
     invalid_examples = (
-        flattened.loc[
-            ~parsed_ids["sample_id_valid"],
-            "sample_id",
-        ]
+        flattened.loc[invalid_mask, "sample_id"]
         .dropna()
         .astype(str)
         .head(10)
