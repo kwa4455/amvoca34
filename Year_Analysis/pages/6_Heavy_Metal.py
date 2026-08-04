@@ -1,789 +1,948 @@
-import streamlit as st
+import io
+import re
+from typing import Dict, List, Optional, Tuple
+
 import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
-import plotly.figure_factory as ff
-from scipy.stats import kruskal, ttest_ind
-from plotly.subplots import make_subplots
+import streamlit as st
 
-# --- Page Config ---
-st.set_page_config(page_title="Air Quality Dashboard", layout="wide")
-st.title("🌍 Air Quality Data Explorer")
 
-# Initialize theme and font size in session state
-if "theme" not in st.session_state:
-    st.session_state.theme = "Light"
-if "font_size" not in st.session_state:
-    st.session_state.font_size = "Medium"
-
-theme_choice = st.sidebar.selectbox(
-    "Choose Theme",
-    ["Light", "Dark", "Blue", "Green", "Purple"],
-    index=["Light", "Dark", "Blue", "Green", "Purple"].index(st.session_state.theme)
+# ============================================================
+# PAGE SETTINGS
+# ============================================================
+st.set_page_config(
+    page_title="Metal Concentration Data Cleaner",
+    page_icon="🧹",
+    layout="wide",
 )
-st.session_state.theme = theme_choice
 
-# Font size selection
-font_choice = st.sidebar.radio("Font Size", ["Small", "Medium", "Large"],
-                               index=["Small", "Medium", "Large"].index(st.session_state.font_size))
-st.session_state.font_size = font_choice
+st.title("Metal Concentration Data Cleaner")
+st.caption(
+    "Upload or paste laboratory results with two-level headers such as "
+    "'Cd / Conc / Uncert'. The app creates Cd and Cd_error columns and "
+    "extracts the date, site code, site name, and pollutant from sample_ids."
+)
 
-# Reset to default
-if st.sidebar.button("🔄 Reset to Defaults"):
-    st.session_state.theme = "Light"
-    st.session_state.font_size = "Medium"
-    st.success("Reset to Light theme and Medium font!")
-    st.rerun()
 
-# Theme settings dictionary
-themes = {
-    "Light": {
-        "background": "rgba(255, 255, 255, 0.4)",
-        "text": "#004d40",
-        "button": "#00796b",
-        "hover": "#004d40",
-        "input_bg": "rgba(255, 255, 255, 0.6)"
-    },
-    "Dark": {
-        "background":"rgba(22, 27, 34, 0.4)",
-        "text": "#e6edf3",
-        "button": "#238636",
-        "hover": "#2ea043",
-        "input_bg": "rgba(33, 38, 45, 0.6)"
-    },
-    "Blue": {
-        "background": "rgba(210, 230, 255, 0.4)",
-        "text": "#0a2540",
-        "button": "#1e88e5",
-        "hover": "#1565c0",
-        "input_bg": "rgba(255, 255, 255, 0.6)"
-    },
-    "Green": {
-        "background": "rgba(223, 255, 231, 0.4)", 
-        "text": "#1b5e20",
-        "button": "#43a047",
-        "hover": "#2e7d32",
-        "input_bg": "rgba(255, 255, 255, 0.6)"
-    },
-    "Purple": {
-        "background": "rgba(240, 225, 255, 0.4)",
-        "text": "#4a148c",
-        "button": "#8e24aa",
-        "hover": "#6a1b9a",
-        "input_bg": "rgba(255, 255, 255, 0.6)"
-    }
+# ============================================================
+# CONSTANTS
+# ============================================================
+SAMPLE_HEADER_KEYS = {
+    "sampleid",
+    "sampleids",
+    "sampleidentifier",
+    "sampleidentifiers",
+    "sample",
 }
 
-# Font size mapping
-font_map = {"Small": "14px", "Medium": "16px", "Large": "18px"}
+CONCENTRATION_KEYS = {
+    "conc",
+    "concentration",
+    "result",
+    "value",
+    "measuredvalue",
+}
 
-# Apply theme and inject CSS
-theme = themes[st.session_state.theme]
-font_size = font_map[st.session_state.font_size]
+ERROR_KEYS = {
+    "uncert",
+    "uncertainty",
+    "error",
+    "err",
+    "sigma",
+    "sd",
+    "standarddeviation",
+}
 
-def generate_css(theme: dict, font_size: str) -> str:
-    return f"""
-    <style>
-    html, body, .stApp, [class^="css"], button, input, label, textarea, select {{
-        font-size: {font_size} !important;
-        color: {theme["text"]} !important;
-        font-family: 'Segoe UI', 'Roboto', sans-serif;
-    }}
-    .stApp {{
-        background-color: {theme["background"]} !important;
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        background-attachment: fixed;
-        box-shadow: inset 0 0 50px rgba(255,255,255,0.1);
-        transition: background 0.5s ease, color 0.5s ease;
-    }}
-    html, body, [class^="css"] {{
-        background-color: transparent !important;
-    }}
-    h1, h2, h3 {{
-        font-weight: bold;
-    }}
-    .stTextInput > div > input,
-    .stSelectbox > div > div,
-    .stRadio > div,
-    textarea {{
-        background-color: {theme["input_bg"]} !important;
-        color: {theme["text"]} !important;
-        border: 1px solid {theme["button"]};
-        border-radius: 8px;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
-    }}
-    div.stButton > button {{
-        background-color: {theme["button"]};
-        color: white;
-        padding: 0.5em 1.5em;
-        border-radius: 8px;
-        transition: background-color 0.3s ease;
-    }}
-    div.stButton > button:hover {{
-        background-color: {theme["hover"]};
-    }}
+ELEMENT_CASE = {
+    "AL": "Al",
+    "CR": "Cr",
+    "MN": "Mn",
+    "FE": "Fe",
+    "CO": "Co",
+    "NI": "Ni",
+    "CU": "Cu",
+    "ZN": "Zn",
+    "AS": "As",
+    "CD": "Cd",
+    "HG": "Hg",
+    "PB": "Pb",
+    "MG": "Mg",
+    "CA": "Ca",
+    "NA": "Na",
+    "K": "K",
+    "TI": "Ti",
+    "V": "V",
+    "SE": "Se",
+    "BR": "Br",
+    "SR": "Sr",
+    "MO": "Mo",
+    "SN": "Sn",
+    "SB": "Sb",
+    "BA": "Ba",
+}
 
-    body, .stApp {{
-        font-family: 'Poppins', sans-serif;
-        transition: all 0.5s ease;
-    }}
 
-    [data-testid="stSidebar"] {{
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.2);
-        border-right: 2px solid #74c69d;
-    }}
+# ============================================================
+# GENERAL HELPERS
+# ============================================================
+def normalize_key(value: object) -> str:
+    """Normalize a header value for reliable comparison."""
+    if pd.isna(value):
+        return ""
+    return re.sub(r"[^a-z0-9]+", "", str(value).strip().lower())
 
-    .stButton>button, .stDownloadButton>button {{
-        background: {theme["button"]};
-        color: white;
-        border: none;
-        border-radius: 10px;
-        padding: 0.7em 1.5em;
-        font-weight: bold;
-        font-size: 1rem;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 20px {theme["button"]};
-        transition: all 0.3s ease;
-    }}
 
-    .stButton>button:hover, .stDownloadButton>button:hover {{
-        background: {theme["hover"]};
-        transform: scale(1.05);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 30px {theme["hover"]};
-    }}
+def safe_text(value: object) -> str:
+    if pd.isna(value):
+        return ""
+    return str(value).strip()
 
-    ::-webkit-scrollbar {{
-        width: 8px;
-    }}
-    ::-webkit-scrollbar-thumb {{
-        background: #74c69d;
-        border-radius: 10px;
-    }}
-    ::-webkit-scrollbar-thumb:hover {{
-        background: #52b788;
-    }}
 
-    .glow-text {{
-        text-align: center;
-        font-size: 3em;
-        color: #52b788;
-        text-shadow: 0 0 5px #52b788, 0 0 10px #52b788, 0 0 20px #52b788;
-        margin-bottom: 20px;
-    }}
+def make_unique(names: List[str]) -> List[str]:
+    """Ensure output column names are unique."""
+    counts: Dict[str, int] = {}
+    output: List[str] = []
 
-    .stDataFrame, .stTable {{
-        background: rgba(255, 255, 255, 0.6);
-        border-radius: 12px;
-        backdrop-filter: blur(10px);
-        padding: 1rem;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        overflow: hidden;
-        font-size: 15px;
-    }}
+    for name in names:
+        base = name or "unnamed"
+        counts[base] = counts.get(base, 0) + 1
+        if counts[base] == 1:
+            output.append(base)
+        else:
+            output.append(f"{base}_{counts[base]}")
+    return output
 
-    thead tr th {{
-        background: {theme["button"]};
-        color: white;
-        font-weight: bold;
-        text-align: center;
-        padding: 0.5em;
-    }}
 
-    tbody tr:nth-child(even) {{
-        background-color: #eeeeee;
-    }}
-    tbody tr:nth-child(odd) {{
-        background-color: #ffffff;
-    }}
-    tbody tr:hover {{
-        background-color: #b7e4c7;
-        transition: background-color 0.3s ease;
-    }}
-
-    .element-container iframe {{
-        background: rgba(255, 255, 255, 0.5) !important;
-        backdrop-filter: blur(10px);
-        border-radius: 12px;
-        padding: 10px;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-    }}
-
-    body.dark-mode .stDataFrame, body.dark-mode .stTable {{
-        background: rgba(33, 38, 45, 0.6);
-        border-radius: 12px;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        font-size: 15px;
-        overflow: hidden;
-    }}
-
-    body.dark-mode thead tr th {{
-        background: linear-gradient(135deg, #238636, #2ea043);
-        color: #ffffff;
-        font-weight: bold;
-        text-align: center;
-    }}
-
-    body.dark-mode tbody tr:nth-child(even) {{
-        background: linear-gradient(90deg, #21262d, #30363d);
-        color: #e6edf3;
-        transition: all 0.3s ease;
-    }}
-
-    body.dark-mode tbody tr:nth-child(odd) {{
-        background: linear-gradient(90deg, #161b22, #21262d);
-        color: #e6edf3;
-        transition: all 0.3s ease;
-    }}
-
-    body.dark-mode tbody tr:hover {{
-        background: linear-gradient(90deg, #21262d, #30363d);
-        box-shadow: 0 0 15px #58a6ff;
-        transform: scale(1.01);
-    }}
-
-    body.dark-mode .element-container iframe {{
-        background: rgba(33, 38, 45, 0.5) !important;
-        backdrop-filter: blur(10px);
-        border: 2px solid #58a6ff;
-        padding: 10px;
-        border-radius: 16px;
-        box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff;
-        animation: pulse-glow-dark 3s infinite ease-in-out;
-    }}
-
-    @keyframes pulse-glow {{
-      0% {{ box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }}
-      50% {{ box-shadow: 0 0 25px #40916c, 0 0 45px #2d6a4f; }}
-      100% {{ box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }}
-    }}
-    @keyframes pulse-glow-dark {{
-      0% {{ box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }}
-      50% {{ box-shadow: 0 0 25px #3b82f6, 0 0 45px #2563eb; }}
-      100% {{ box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }}
-    }}
-
-    .footer {{
-        position: fixed;
-        left: 0;
-        bottom: 0;
-        width: 100%;
-        background-color: {theme["background"]};
-        color: {theme["text"]};
-        text-align: center;
-        padding: 12px 0;
-        font-size: 14px;
-        font-weight: bold;
-        box-shadow: 0px -2px 10px rgba(0,0,0,0.1);
-        backdrop-filter: blur(8px);
-    }}
-    </style>
+def canonical_analyte_name(header: object) -> str:
     """
+    Convert headers such as 'Al (ug/m3)' to 'Al'.
+    Other analyte names are cleaned but retained.
+    """
+    text = safe_text(header)
+    text = re.sub(r"\([^)]*\)", "", text)  # remove unit in parentheses
+    text = re.sub(
+        r"\b(conc(?:entration)?|uncert(?:ainty)?|error|err|sigma|sd|result|value)\b",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r"[^A-Za-z0-9._-]+", "_", text).strip("_-.")
 
-st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
+    if not text:
+        return "analyte"
 
-def cleaned(df):
-    # Parse and clean date
-    df['date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
-    df = df.dropna(subset=['date'])  # Drop rows with invalid dates
-    df['date'] = df['date'].dt.tz_localize(None)
-    df = df.set_index('date')
+    upper = text.upper()
+    if upper in ELEMENT_CASE:
+        return ELEMENT_CASE[upper]
 
-    # Add time features
-    df['year'] = df.index.year
-    df['month'] = pd.Categorical(df.index.strftime('%b'),
-                                 categories=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                                             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                                 ordered=True)
-    df['dayofweek'] = pd.Categorical(df.index.day_name(),
-                                     categories=['Monday', 'Tuesday', 'Wednesday', 'Thursday',
-                                                 'Friday', 'Saturday', 'Sunday'],
-                                     ordered=True)
+    # Keep conventional capitalization for short chemical symbols.
+    if re.fullmatch(r"[A-Za-z]{1,3}", text):
+        return text[0].upper() + text[1:].lower()
 
-    return df
+    return text
 
-def yearly_plot_bar(df, metal_sel):
-    import plotly.graph_objects as go
-    import pandas as pd
 
-    # Check if the selected metal and its error column are in the DataFrame
-    if metal_sel not in df.columns:
-        return go.Figure(), pd.DataFrame()  # Return empty plot and data if missing
+def extract_unit(header: object) -> str:
+    """Extract text inside parentheses, e.g. ug/m3 or ng/m3."""
+    text = safe_text(header)
+    match = re.search(r"\(([^)]*)\)", text)
+    return match.group(1).strip() if match else ""
 
-    error_col = f"{metal_sel}_error"
-    has_error = error_col in df.columns
 
-    # Define aggregation logic
-    agg_funcs = {
-        metal_sel: ['mean', 'std', 'median']
+def classify_subheader(value: object) -> str:
+    key = normalize_key(value)
+
+    if key in CONCENTRATION_KEYS or key.startswith("conc"):
+        return "concentration"
+
+    if (
+        key in ERROR_KEYS
+        or key.startswith("uncert")
+        or key.startswith("error")
+    ):
+        return "error"
+
+    return "other"
+
+
+# ============================================================
+# INPUT READING
+# ============================================================
+def read_delimited_bytes(
+    content: bytes,
+    separator_choice: str,
+) -> pd.DataFrame:
+    separator_map = {
+        "Auto-detect": None,
+        "Tab": "\t",
+        "Comma": ",",
+        "Semicolon": ";",
+        "Pipe": "|",
     }
-    if has_error:
-        agg_funcs[error_col] = ['mean', 'std', 'median']
+    separator = separator_map[separator_choice]
 
-    # Group and aggregate
-    summary_data = (
-        df.groupby(['site', 'dayofweek'])
-        .agg(agg_funcs)
-        .reset_index()
+    last_error: Optional[Exception] = None
+    for encoding in ("utf-8-sig", "utf-8", "latin-1"):
+        try:
+            return pd.read_csv(
+                io.BytesIO(content),
+                sep=separator,
+                engine="python",
+                header=None,
+                dtype=object,
+                encoding=encoding,
+                keep_default_na=False,
+            )
+        except Exception as exc:
+            last_error = exc
+
+    raise ValueError(f"Could not read the delimited file: {last_error}")
+
+
+def read_pasted_text(text: str) -> pd.DataFrame:
+    first_line = text.splitlines()[0] if text.splitlines() else ""
+
+    if "\t" in first_line:
+        separator = "\t"
+    elif ";" in first_line:
+        separator = ";"
+    elif "|" in first_line:
+        separator = "|"
+    elif "," in first_line:
+        separator = ","
+    else:
+        separator = None
+
+    return pd.read_csv(
+        io.StringIO(text),
+        sep=separator,
+        engine="python",
+        header=None,
+        dtype=object,
+        keep_default_na=False,
     )
 
-    # Flatten column names
-    summary_data.columns = ['_'.join(col).strip('_') for col in summary_data.columns]
 
-    # Add sample count per group
-    summary_data['count'] = df.groupby(['site', 'dayofweek']).size().values
+# ============================================================
+# HEADER DETECTION AND FLATTENING
+# ============================================================
+def find_sample_header(raw: pd.DataFrame) -> Tuple[int, int]:
+    """
+    Find the row and column containing sample_ids.
+    Searches the first 30 rows.
+    """
+    search_rows = min(30, len(raw))
 
-    # Round and format
-    summary_data = summary_data.round(3)
+    for row_index in range(search_rows):
+        for col_index, value in enumerate(raw.iloc[row_index].tolist()):
+            if normalize_key(value) in SAMPLE_HEADER_KEYS:
+                return row_index, col_index
 
-    # Define colors by day of week
-        # Define colors by day of week
-    year_colors = {
-        "Monday": "#008000",
-        "Tuesday": "#b30000",
-        "Wednesday": "blue",
-        "Thursday": "yellow",
-        "Friday": "purple",
-        "Saturday": "orange",
-        "Sunday": "green"
-    }
+    raise ValueError(
+        "The app could not find a sample_ids column in the first 30 rows."
+    )
 
-    # Metal-specific limits
-    metal_limits = {
-        "pb": 0.5,     # Ghana
-        "cr": 12,      # US EPA
-        "cd": 5        # EU AQS
-    }
 
-    limit_value = metal_limits.get(metal_sel.lower())
+def second_row_is_subheader(row: pd.Series) -> bool:
+    classifications = [classify_subheader(value) for value in row.tolist()]
+    recognised = sum(
+        item in {"concentration", "error"} for item in classifications
+    )
+    return recognised >= 2
 
-    # Build plot
-    fig = go.Figure()
 
-    for day in summary_data['dayofweek'].unique():
-        subset = summary_data[summary_data['dayofweek'] == day]
+def parse_one_level_header(header: object) -> str:
+    """
+    Handle a one-row header such as:
+    'Cd Conc', 'Cd Uncert', 'Cd Error', or 'Cd (ng/m3)'.
+    """
+    text = safe_text(header)
+    key = normalize_key(text)
 
-        fig.add_trace(go.Bar(
-            x=subset['site'],
-            y=subset.get(f'{metal_sel}_median', [0]),
-            name=day,
-            error_y=dict(
-                type='data',
-                array=subset.get(f'{error_col}_median', [0]) if has_error else None,
-                visible=has_error
-            ),
-            marker_color=year_colors.get(day, 'gray'),
-        ))
+    if key in SAMPLE_HEADER_KEYS:
+        return "sample_id"
 
-    # Add standard limit line if available
-    if limit_value:
-        fig.add_shape(
-            type="line",
-            x0=-0.5, x1=len(summary_data['site'].unique()) - 0.5,
-            y0=limit_value, y1=limit_value,
-            line=dict(color="red", dash="solid"),
-            xref="x", yref="y"
+    is_error = any(
+        token in key
+        for token in (
+            "uncert",
+            "uncertainty",
+            "error",
+            "err",
+            "sigma",
+            "standarddeviation",
         )
-
-    # Vertical lines between sites
-    for i in range(len(summary_data['site'].unique()) - 1):
-        fig.add_vline(x=i + 0.5, line_dash="dash", line_color="black")
-
-    # Set units
-    unit = "μg/m³" if metal_sel.lower() == "al" else "ng/m³"
-
-    fig.update_layout(
-        barmode='group',
-        title=f"{metal_sel.upper()} Pollution by Site (Median Value)",
-        xaxis_title="Site",
-        yaxis_title=f"{metal_sel.upper()} ({unit})",
-        xaxis_tickangle=45,
-        legend_title_text='Day of Week',
-        template="plotly_white",
-        font=dict(size=12, family="Arial"),
-        plot_bgcolor='white',
-        margin=dict(t=80, b=100),
     )
 
-    return fig, summary_data
-
-import streamlit as st
-import plotly.graph_objects as go
-import pandas as pd
-import plotly.express as px
-
-def correlation_analysis(df, metals, selected_sites, title="Correlation Heatmap"):
-    site_corrs = {}
-
-    # Use Plotly's color palette to auto-assign site colors
-    unique_sites = sorted(df['site'].unique())
-    color_palette = px.colors.qualitative.Set3 + px.colors.qualitative.Plotly
-    colors = {site: color_palette[i % len(color_palette)] for i, site in enumerate(unique_sites)}
-
-    for site in unique_sites:
-        if site not in selected_sites:
-            continue
-
-        site_df = df[df['site'] == site][metals]
-
-        if site_df.empty:
-            continue
-
-        corr_matrix = site_df.corr(method='pearson')
-        site_corrs[site] = corr_matrix
-
-        fig = go.Figure(data=go.Heatmap(
-            z=corr_matrix.values,
-            x=corr_matrix.columns,
-            y=corr_matrix.columns,
-            colorscale='RdBu',
-            zmin=-1, zmax=1,
-            colorbar=dict(title="Correlation"),
-            hovertemplate="x: %{x}<br>y: %{y}<br>Correlation: %{z:.2f}<extra></extra>",
-        ))
-
-        fig.update_layout(
-            title=f"{title} - {site}",
-            xaxis_title="Variables",
-            yaxis_title="Variables",
-            title_font=dict(size=16),
-            xaxis=dict(tickangle=45, tickfont=dict(size=12)),
-            yaxis=dict(tickfont=dict(size=12)),
-            plot_bgcolor='white',
-            height=600,
-            width=600,
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
-
-    return site_corrs
+    analyte = canonical_analyte_name(text)
+    return f"{analyte}_error" if is_error else analyte
 
 
+def flatten_lab_table(
+    raw: pd.DataFrame,
+) -> Tuple[pd.DataFrame, pd.DataFrame, List[str]]:
+    """
+    Convert two-level laboratory headers into a single tidy header.
 
+    Example:
+        Cd | Cd
+        Conc | Uncert
 
-def plot_violin_plot(df, metal, selected_sites):
-    # Generate automatic color palette
-    unique_sites = sorted(df['site'].unique())
-    color_palette = px.colors.qualitative.Set3 + px.colors.qualitative.Plotly
-    colors = {site: color_palette[i % len(color_palette)] for i, site in enumerate(unique_sites)}
+    becomes:
+        Cd | Cd_error
+    """
+    raw = raw.copy()
+    raw = raw.replace(r"^\s*$", pd.NA, regex=True)
+    raw = raw.dropna(axis=0, how="all").dropna(axis=1, how="all")
 
-    # Define units
-    unit = "µg/m³" if metal.lower() == "al" else "ng/m³"
-    
-    fig = go.Figure()
+    if raw.empty:
+        raise ValueError("The uploaded table contains no usable data.")
 
-    for site in unique_sites:
-        if site not in selected_sites:
-            continue
+    header_row, sample_col = find_sample_header(raw)
 
-        site_data = df[df['site'] == site]
+    # Remove title rows above the true header and irrelevant columns to the left.
+    table = raw.iloc[header_row:, sample_col:].reset_index(drop=True)
+    table = table.dropna(axis=1, how="all")
 
-        fig.add_trace(go.Violin(
-            x=site_data['site'],
-            y=site_data[metal],
-            box_visible=True,
-            line_color=colors[site],
-            name=site,
-            side='positive',
-            meanline_visible=True,
-            fillcolor=colors[site],
-            opacity=0.6,
-            points="all",
-        ))
+    top_headers_original = table.iloc[0].tolist()
+    top_headers_filled = pd.Series(top_headers_original).ffill().tolist()
 
-        mean_value = site_data[metal].mean()
-        sd_value = site_data[metal].std()
-        median_value = site_data[metal].median()
-
-        fig.add_annotation(
-            x=site,
-            y=mean_value + 0.02,
-            text=f"Mean: {mean_value:.2f}<br>SD: {sd_value:.2f}<br>Median: {median_value:.2f}",
-            showarrow=True,
-            arrowhead=2,
-            arrowsize=1,
-            ax=0,
-            ay=-40,
-            font=dict(size=10, color="black"),
-            align="center"
-        )
-
-    fig.update_layout(
-        title=f"{metal.upper()} ({unit}) by Site",
-        xaxis_title="Site",
-        yaxis_title=f"{metal.upper()} ({unit})",
-        template="plotly_white",
-        showlegend=False,
-        xaxis_tickangle=45,
-        font=dict(size=12, family="Arial", color="black"),
-        plot_bgcolor='white',
-        margin=dict(t=50, b=100),
+    has_subheader = (
+        len(table) > 1 and second_row_is_subheader(table.iloc[1])
     )
 
-    return fig
-
-
-
-# Function to calculate Kruskal-Wallis test and return a summary DataFrame
-def kruskal_wallis_by_test(df, metals, site_column, n_bootstrap=1000, ci_level=0.95):
-    # Initialize an empty list to store results
-    results = []
-
-    # Function to calculate the confidence interval of a sample using bootstrapping
-    def bootstrap_ci(data, n_bootstrap, ci_level):
-        bootstrapped_means = []
-        for _ in range(n_bootstrap):
-            sample = np.random.choice(data, size=len(data), replace=True)
-            bootstrapped_means.append(np.median(sample))
-        lower_bound = np.percentile(bootstrapped_means, (1 - ci_level) / 2 * 100)
-        upper_bound = np.percentile(bootstrapped_means, (1 + ci_level) / 2 * 100)
-        return lower_bound, upper_bound
-
-    # Iterate over each metal to perform Kruskal-Wallis test
-    for metal in metals:
-        # Group the data by site for each metal and perform the Kruskal-Wallis test
-        groups = [df[df[site_column] == site][metal].dropna() for site in df[site_column].unique()]
-        statistic, p_value = stats.kruskal(*groups)
-
-        # Calculate the degrees of freedom (df = number of unique sites - 1)
-        df_value = len(df[site_column].unique()) - 1
-        
-        # Calculate the confidence intervals for the medians of each group
-        ci_dict = {}
-        for site in df[site_column].unique():
-            site_data = df[df[site_column] == site][metal].dropna()
-            lower, upper = bootstrap_ci(site_data, n_bootstrap, ci_level)
-            ci_dict[site] = {'lower': lower, 'upper': upper}
-
-        # Store the results in the results list
-        results.append({
-            'Variable': metal.capitalize(),
-            'Statistic': statistic,
-            'p_value': p_value,
-            'df': df_value,
-            'Confidence Intervals': ci_dict
-        })
-
-    # Convert the results to a DataFrame
-    kruskal_df = pd.DataFrame(results)
-    
-    return kruskal_df
-
-# Function to aggregate data by month or dayofweek
-def aggregate_metals(df, time_col):
-    metals = ["cd", "cr", "hg", "al", "as", "mn", "pb"]
-    agg_funcs = {col: ['mean', 'std', 'median'] for col in metals}
-    summary = df.groupby(['site', time_col]).agg(agg_funcs).reset_index()
-    
-    # Flatten MultiIndex columns
-    summary.columns = ['_'.join(col).strip('_') if isinstance(col, tuple) else col for col in summary.columns]
-    return summary
-
-# Time Variation Plotting Function
-def timeVariation(df, pollutants=["pb"], statistic="median", colors=None):
-    if colors is None:
-        colors = px.colors.qualitative.Plotly
-
-    # Create subplots: 1 row, 2 columns
-    fig = make_subplots(
-        rows=1, cols=2, 
-        subplot_titles=["Time Variation by Month", "Time Variation by Day of Week"],
-        shared_yaxes=True
+    subheaders = (
+        table.iloc[1].tolist()
+        if has_subheader
+        else [""] * table.shape[1]
     )
 
-    # Aggregate by 'month'
-    df_month_agg = aggregate_metals(df, time_col="month")
-    
-    # Plot for 'month'
-    for i, pollutant in enumerate(pollutants):
-        col_name = f"{pollutant}_{statistic}"
-        if col_name not in df_month_agg.columns:
-            raise ValueError(f"'{col_name}' not found in DataFrame.")
+    output_names: List[str] = []
+    units_records: List[Dict[str, str]] = []
+    analyte_columns: List[str] = []
 
-        df_clean = df_month_agg.dropna(subset=[col_name])
+    for column_index in range(table.shape[1]):
+        top_original = top_headers_original[column_index]
+        top_filled = top_headers_filled[column_index]
+        subheader = subheaders[column_index]
 
-        fig.add_trace(go.Scatter(
-            x=df_clean['month'],
-            y=df_clean[col_name],
-            mode='lines+markers',
-            name=f'{pollutant} by Month',
-            line=dict(color=colors[i % len(colors)]),
-        ), row=1, col=1)
+        if column_index == 0:
+            output_name = "sample_id"
+        elif has_subheader:
+            analyte = canonical_analyte_name(top_filled)
+            subheader_type = classify_subheader(subheader)
 
-    # Aggregate by 'dayofweek'
-    df_dayofweek_agg = aggregate_metals(df, time_col="dayofweek")
-    
-    # Plot for 'dayofweek'
-    for i, pollutant in enumerate(pollutants):
-        col_name = f"{pollutant}_{statistic}"
-        if col_name not in df_dayofweek_agg.columns:
-            raise ValueError(f"'{col_name}' not found in DataFrame.")
+            if subheader_type == "error":
+                output_name = f"{analyte}_error"
+            elif subheader_type == "concentration":
+                output_name = analyte
+            else:
+                extra = canonical_analyte_name(subheader)
+                output_name = (
+                    f"{analyte}_{extra}"
+                    if extra and extra != "analyte"
+                    else analyte
+                )
+        else:
+            output_name = parse_one_level_header(top_filled)
 
-        df_clean = df_dayofweek_agg.dropna(subset=[col_name])
+        output_names.append(output_name)
 
-        fig.add_trace(go.Scatter(
-            x=df_clean['dayofweek'],
-            y=df_clean[col_name],
-            mode='lines+markers',
-            name=f'{pollutant} by Day of Week',
-            line=dict(color=colors[i % len(colors)]),
-        ), row=1, col=2)
+        if column_index > 0:
+            final_analyte = output_name.removesuffix("_error")
+            unit = extract_unit(top_filled) or extract_unit(top_original)
 
-    # Update layout and titles
-    fig.update_layout(
-        title=f"Time Variation of Pollutants ({statistic.capitalize()})",
-        xaxis_title="Month",
-        yaxis_title="Concentration",
-        template="plotly",
-        showlegend=True,
-        height=500
-    )
+            units_records.append(
+                {
+                    "analyte": final_analyte,
+                    "unit_as_uploaded": unit,
+                    "output_column": output_name,
+                    "measurement_type": (
+                        "error_or_uncertainty"
+                        if output_name.endswith("_error")
+                        else "concentration"
+                    ),
+                }
+            )
+            analyte_columns.append(output_name)
 
-    # X-axis label for dayofweek subplot
-    fig.update_xaxes(title_text="Day", row=1, col=2)  # Label x-axis for dayofweek plot
+    output_names = make_unique(output_names)
 
-    # Custom Y-axis labels based on pollutant
-    for pollutant in pollutants:
-        if pollutant == "al":  # For Al, use "µg/m³"
-            fig.update_yaxes(title_text="Concentration (µg/m³)", row=1, col=1)
-            fig.update_yaxes(title_text="Concentration (µg/m³)", row=1, col=2)
-        else:  # For other metals, use "ng/m³"
-            fig.update_yaxes(title_text="Concentration (ng/m³)", row=1, col=1)
-            fig.update_yaxes(title_text="Concentration (ng/m³)", row=1, col=2)
+    data_start_row = 2 if has_subheader else 1
+    cleaned = table.iloc[data_start_row:].copy()
+    cleaned.columns = output_names
+    cleaned = cleaned.dropna(axis=0, how="all")
+    cleaned = cleaned.reset_index(drop=True)
 
-    # Update x-axis type for categorical variables
-    fig.update_xaxes(type='category', row=1, col=1)  # 'month' is categorical
-    fig.update_xaxes(type='category', row=1, col=2)  # 'dayofweek' is categorical
+    # Remove rows without a sample ID.
+    cleaned["sample_id"] = cleaned["sample_id"].astype("string").str.strip()
+    cleaned = cleaned[
+        cleaned["sample_id"].notna()
+        & (cleaned["sample_id"] != "")
+    ].copy()
 
-    return fig
+    units = pd.DataFrame(units_records).drop_duplicates().reset_index(drop=True)
+
+    # Rebuild the analyte list after unique-name handling.
+    analyte_columns = [
+        column for column in cleaned.columns if column != "sample_id"
+    ]
+
+    return cleaned, units, analyte_columns
 
 
-
-
-
-
-uploaded_files = st.file_uploader("Upload CSV files", accept_multiple_files=True, type=["csv"])
-if not uploaded_files:
-    st.warning("Please upload at least one CSV file.")
-    st.stop()
-required_columns = [
-    'date', 'site', 'id', "cd", "cr", "hg", "al", "as", "mn", "pb",
-    "cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error"
-]
-dataframes = []
-file_names = []
-
-for uploaded_file in uploaded_files:
-    try:
-        df = pd.read_csv(uploaded_file)
-        df.columns = df.columns.str.strip().str.lower()
-        missing = set(required_columns) - set(df.columns)
-        if missing:
-            st.warning(f"File '{uploaded_file.name}' is missing required columns: {', '.join(sorted(missing))}")
-            continue
-        df = df[required_columns].copy()
-        file_names.append(uploaded_file.name)
-        df_cleaned = cleaned(df)
-        dataframes.append(df_cleaned)
-        file_names.append(uploaded_file.name)
-    except Exception as e:
-        st.error(f"Error processing {uploaded_file.name}: {e}")
-        st.stop()
-
-# Sidebar filters
-
-# Identify metal columns (exclude non-metal ones)
-non_metal_columns = {'site', 'year', 'dayofweek', 'month' 'date',"cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error"}
-all_columns = set().union(*[df.columns for df in dataframes])
-metal_columns = ["cd", "cr", "hg", "al", "as", "mn", "pb"]
-error_columns = [f"{m}_error" for m in metal_columns]
-errors = sorted([col for col in all_columns if col.lower() in error_columns])
-non_metal_columns = {'site', 'year', 'dayofweek', 'month', 'date'}
-metals = sorted([col for col in all_columns if col.lower() in metal_columns])
-sites = sorted(
-    set().union(*[df['site'].unique() for df in dataframes if 'site' in df.columns])
+# ============================================================
+# SAMPLE ID PARSING
+# ============================================================
+SAMPLE_ID_PATTERN = re.compile(
+    r"^(?P<site>.+?)_(?P<date>\d{6}|\d{8})_(?P<pollutant>.+)$"
 )
 
 
+def normalize_pollutant(value: str) -> str:
+    text = str(value).strip()
+    compact = re.sub(r"[\s_-]+", "", text.upper())
+
+    if compact in {"PM2.5", "PM25"}:
+        return "PM2.5"
+    if compact == "PM10":
+        return "PM10"
+    if compact == "TSP":
+        return "TSP"
+
+    return text
 
 
-    
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📈 Trends", "📊 Box & Bar Plots", "📐 Kruskal & T-Test",
-    "🔗 Correlation", "📉 Theil-Sen Trend"
-])
+def parse_date_token(token: str, date_format_label: str) -> pd.Timestamp:
+    formats = {
+        "DDMMYY — 170325 = 17 Mar 2025": "%d%m%y",
+        "YYMMDD — 250317 = 17 Mar 2025": "%y%m%d",
+        "DDMMYYYY — 17032025 = 17 Mar 2025": "%d%m%Y",
+        "YYYYMMDD — 20250317 = 17 Mar 2025": "%Y%m%d",
+    }
 
-# --- Tab 1: Yearly Trends ---
-with tab1:
-    for df, name in zip(dataframes, file_names):
-        st.subheader(f"Yearly Trend: {name}")
-        metals = [m for m in metal_columns if m in df.columns]
-        if not metals:
-            st.warning(f"No metals found in {name}. Skipping.")
+    selected_format = formats[date_format_label]
+
+    # First try the user's selected format.
+    parsed = pd.to_datetime(token, format=selected_format, errors="coerce")
+    if not pd.isna(parsed):
+        return parsed
+
+    # If the token length differs, try the compatible alternatives.
+    fallback_formats = (
+        ["%d%m%y", "%y%m%d"]
+        if len(token) == 6
+        else ["%d%m%Y", "%Y%m%d"]
+    )
+
+    for date_format in fallback_formats:
+        parsed = pd.to_datetime(token, format=date_format, errors="coerce")
+        if not pd.isna(parsed):
+            return parsed
+
+    return pd.NaT
+
+
+def parse_sample_ids(
+    sample_ids: pd.Series,
+    date_format_label: str,
+) -> pd.DataFrame:
+    records: List[Dict[str, object]] = []
+
+    for sample_id in sample_ids.astype("string").fillna(""):
+        text = str(sample_id).strip()
+        match = SAMPLE_ID_PATTERN.match(text)
+
+        if not match:
+            records.append(
+                {
+                    "site_code": pd.NA,
+                    "date": pd.NaT,
+                    "pollutant": pd.NA,
+                    "sample_id_valid": False,
+                }
+            )
             continue
 
-        selected_metals = st.multiselect(
-            f"Select metals for {name}", metals, default=metals, key=f"metals_{name}"
+        date_value = parse_date_token(
+            match.group("date"),
+            date_format_label,
         )
 
-        for metal in selected_metals:
-            fig, summary = yearly_plot_bar(df, metal)
-            st.plotly_chart(fig, use_container_width=True)
-            st.dataframe(summary, use_container_width=True)
+        records.append(
+            {
+                "site_code": match.group("site").strip(),
+                "date": date_value,
+                "pollutant": normalize_pollutant(
+                    match.group("pollutant")
+                ),
+                "sample_id_valid": not pd.isna(date_value),
+            }
+        )
 
-# --- Tab 2: Correlation Analysis ---
-with tab2:
-    for df, name in zip(dataframes, file_names):
-        st.subheader(f"Correlation: {name}")
-        metals = [m for m in metal_columns if m in df.columns]
-        site_sel = st.multiselect(
-            f"Sites for {name}", sites, default=sites, key=f"site_corr_{name}"
-        )
-        df_sub = df[df['site'].isin(site_sel)]
-        correlation_analysis(df_sub, metals, site_sel, title=name)
+    return pd.DataFrame(records)
 
-# --- Tab 3: Violin Plot ---
-with tab3:
-    for df, name in zip(dataframes, file_names):
-        st.subheader(f"Violin Plot: {name}")
-        metals = [m for m in metal_columns if m in df.columns]
-        metal_sel = st.selectbox(f"Metal for {name}", metals, key=f"metal2_{name}")
-        fig = plot_violin_plot(df, metal,selected_sites)
-        st.plotly_chart(fig, use_container_width=True)
 
-# --- Tab 4: Kruskal-Wallis Test ---
-with tab4:
-    for df, name in zip(dataframes, file_names):
-        st.subheader(f"Kruskal-Wallis Test: {name}")
-        sites = sorted(df['site'].unique())
-        metals = [m for m in metal_columns if m in df.columns]
-        site_column = st.multiselect(
-            f"Sites for {name}", sites, default=sites, key=f"site3_{name}"
-        )
-        df_sub = df[df['site'].isin(site_column)]
-        kruskal_df = kruskal_wallis_by_test(
-            df_sub, metals, site_column, n_bootstrap=1000, ci_level=0.95
-        )
-        st.write("Kruskal-Wallis Test Results:")
-        st.dataframe(kruskal_df)
+# ============================================================
+# NUMERIC CLEANING
+# ============================================================
+def clean_numeric_series(
+    series: pd.Series,
+    below_detection_rule: str,
+) -> pd.Series:
+    """
+    Convert laboratory values to numeric.
 
-# --- Tab 5: Theil-Sen Trend Analysis ---
-with tab5:
-    for df, name in zip(dataframes, file_names):
-        st.subheader(f"Time Variation: {name}")
-        sites = sorted(df['site'].unique())
-        metals = [m for m in metal_columns if m in df.columns]
-        site_sel = st.multiselect(
-            f"Sites for {name}", sites, default=sites, key=f"site5_{name}"
+    Rules for values such as <0.05:
+    - Missing: converts to NaN
+    - Half limit: converts to 0.025
+    - Reporting limit: converts to 0.05
+    """
+    text = series.astype("string").str.strip()
+    text = text.str.replace("−", "-", regex=False)
+    text = text.str.replace(",", "", regex=False)
+
+    lower = text.str.lower()
+    missing_tokens = {
+        "",
+        "na",
+        "n/a",
+        "nan",
+        "none",
+        "null",
+        "nd",
+        "n.d.",
+        "bdl",
+        "below detection",
+        "-",
+        "--",
+    }
+    text = text.mask(lower.isin(missing_tokens), pd.NA)
+
+    is_below_limit = text.str.match(r"^\s*<", na=False)
+
+    extracted = text.str.extract(
+        r"([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)",
+        expand=False,
+    )
+    numeric = pd.to_numeric(extracted, errors="coerce")
+
+    if below_detection_rule == "Treat <value as missing":
+        numeric = numeric.mask(is_below_limit)
+    elif below_detection_rule == "Use half of <value":
+        numeric = numeric.mask(is_below_limit, numeric / 2)
+    # Otherwise use the reporting-limit number as written.
+
+    return numeric
+
+
+# ============================================================
+# EXPORT
+# ============================================================
+def create_excel_download(
+    cleaned_data: pd.DataFrame,
+    units: pd.DataFrame,
+    qc_summary: pd.DataFrame,
+) -> bytes:
+    output = io.BytesIO()
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        cleaned_data.to_excel(
+            writer,
+            sheet_name="Cleaned_Data",
+            index=False,
         )
-        metal_sel = st.multiselect(
-            f"Metals for {name}", metals, default=metals[:1], key=f"metal5_{name}"
+        units.to_excel(
+            writer,
+            sheet_name="Units",
+            index=False,
         )
-        df_sub = df[df['site'].isin(site_sel)]
-        fig = timeVariation(df_sub, pollutants=metal_sel, statistic=statistic)
-        st.plotly_chart(fig)
+        qc_summary.to_excel(
+            writer,
+            sheet_name="QC_Summary",
+            index=False,
+        )
+
+        # Improve worksheet readability.
+        for worksheet in writer.book.worksheets:
+            worksheet.freeze_panes = "A2"
+            worksheet.auto_filter.ref = worksheet.dimensions
+
+            for column_cells in worksheet.columns:
+                maximum_length = 0
+                column_letter = column_cells[0].column_letter
+
+                for cell in column_cells:
+                    value = "" if cell.value is None else str(cell.value)
+                    maximum_length = max(maximum_length, len(value))
+
+                worksheet.column_dimensions[column_letter].width = min(
+                    maximum_length + 2,
+                    35,
+                )
+
+    output.seek(0)
+    return output.getvalue()
+
+
+# ============================================================
+# SIDEBAR SETTINGS
+# ============================================================
+with st.sidebar:
+    st.header("Cleaning settings")
+
+    date_format_label = st.selectbox(
+        "Date format inside sample_id",
+        [
+            "DDMMYY — 170325 = 17 Mar 2025",
+            "YYMMDD — 250317 = 17 Mar 2025",
+            "DDMMYYYY — 17032025 = 17 Mar 2025",
+            "YYYYMMDD — 20250317 = 17 Mar 2025",
+        ],
+        index=0,
+    )
+
+    below_detection_rule = st.selectbox(
+        "How should <value be handled?",
+        [
+            "Treat <value as missing",
+            "Use half of <value",
+            "Use the reporting-limit value",
+        ],
+        index=0,
+    )
+
+    drop_invalid_ids = st.checkbox(
+        "Drop rows with invalid sample_id",
+        value=False,
+    )
+
+    duplicate_rule = st.selectbox(
+        "Duplicate sample_id handling",
+        [
+            "Keep all",
+            "Keep first",
+            "Keep last",
+            "Remove every duplicated sample_id",
+        ],
+        index=0,
+    )
+
+
+# ============================================================
+# DATA SOURCE
+# ============================================================
+source_type = st.radio(
+    "Choose an input method",
+    ["Upload a file", "Paste tabular data"],
+    horizontal=True,
+)
+
+raw_data: Optional[pd.DataFrame] = None
+
+if source_type == "Upload a file":
+    uploaded_file = st.file_uploader(
+        "Upload an Excel, CSV, TSV, or TXT file",
+        type=["xlsx", "xls", "csv", "tsv", "txt"],
+    )
+
+    if uploaded_file is not None:
+        extension = uploaded_file.name.rsplit(".", 1)[-1].lower()
+        file_bytes = uploaded_file.getvalue()
+
+        try:
+            if extension in {"xlsx", "xls"}:
+                excel_file = pd.ExcelFile(io.BytesIO(file_bytes))
+                selected_sheet = st.selectbox(
+                    "Select worksheet",
+                    excel_file.sheet_names,
+                )
+                raw_data = pd.read_excel(
+                    io.BytesIO(file_bytes),
+                    sheet_name=selected_sheet,
+                    header=None,
+                    dtype=object,
+                )
+            else:
+                separator_choice = st.selectbox(
+                    "File separator",
+                    [
+                        "Auto-detect",
+                        "Tab",
+                        "Comma",
+                        "Semicolon",
+                        "Pipe",
+                    ],
+                    index=0,
+                )
+                raw_data = read_delimited_bytes(
+                    file_bytes,
+                    separator_choice,
+                )
+        except Exception as exc:
+            st.error(f"Could not read the uploaded file: {exc}")
+
+else:
+    example_text = (
+        "sample_ids\tAl (ug/m3)\t\tCr (ng/m3)\t\tCd (ng/m3)\t\n"
+        "\tConc\tUncert\tConc\tUncert\tConc\tError\n"
+        "APS_170325_PM2.5\t0.000\t0.000\t0.00\t0.00\t0.12\t0.02"
+    )
+
+    pasted_text = st.text_area(
+        "Paste the table, including both header rows",
+        height=220,
+        placeholder=example_text,
+    )
+
+    if pasted_text.strip():
+        try:
+            raw_data = read_pasted_text(pasted_text)
+        except Exception as exc:
+            st.error(f"Could not read the pasted table: {exc}")
+
+
+# ============================================================
+# CLEANING WORKFLOW
+# ============================================================
+if raw_data is None:
+    st.info(
+        "Upload a file or paste the laboratory table to begin."
+    )
+    st.stop()
+
+with st.expander("Raw data preview", expanded=False):
+    st.dataframe(raw_data.head(20), use_container_width=True)
+
+try:
+    flattened, units_table, analyte_columns = flatten_lab_table(raw_data)
+except Exception as exc:
+    st.error(f"Header-cleaning error: {exc}")
+    st.stop()
+
+parsed_ids = parse_sample_ids(
+    flattened["sample_id"],
+    date_format_label,
+)
+
+working = pd.concat(
+    [
+        flattened.reset_index(drop=True),
+        parsed_ids.reset_index(drop=True),
+    ],
+    axis=1,
+)
+
+# Convert concentration and error/uncertainty columns to numeric.
+for column in analyte_columns:
+    working[column] = clean_numeric_series(
+        working[column],
+        below_detection_rule,
+    )
+
+# ============================================================
+# USER-DEFINED SITE NAMES
+# ============================================================
+valid_site_codes = (
+    working["site_code"]
+    .dropna()
+    .astype(str)
+    .str.strip()
+)
+site_codes = list(dict.fromkeys(valid_site_codes.tolist()))
+
+site_mapping: Dict[str, str] = {}
+
+if site_codes:
+    first_code = site_codes[0]
+    st.subheader("Name the monitoring site")
+
+    st.info(
+        f"The first valid sample ID begins with **{first_code}**. "
+        "Enter the preferred full site name below. The code is retained "
+        "in the site_code column, while the chosen name is stored in id."
+    )
+
+    with st.expander(
+        "Site-code mapping",
+        expanded=True,
+    ):
+        for position, code in enumerate(site_codes):
+            site_mapping[code] = st.text_input(
+                f"Preferred site name for {code}",
+                value=code,
+                key=f"site_name_{position}",
+                help=(
+                    f"Example: replace {code} with the full station "
+                    "or sampling location name."
+                ),
+            ).strip() or code
+else:
+    st.warning(
+        "No valid site code was extracted from the sample IDs."
+    )
+
+working["id"] = working["site_code"].map(site_mapping)
+working["id"] = working["id"].fillna(working["site_code"])
+
+# ============================================================
+# OPTIONAL ROW CLEANING
+# ============================================================
+rows_before_rules = len(working)
+
+if drop_invalid_ids:
+    working = working[working["sample_id_valid"]].copy()
+
+duplicate_mask = working["sample_id"].duplicated(keep=False)
+duplicates_before_rule = int(duplicate_mask.sum())
+
+if duplicate_rule == "Keep first":
+    working = working.drop_duplicates(
+        subset=["sample_id"],
+        keep="first",
+    )
+elif duplicate_rule == "Keep last":
+    working = working.drop_duplicates(
+        subset=["sample_id"],
+        keep="last",
+    )
+elif duplicate_rule == "Remove every duplicated sample_id":
+    working = working[
+        ~working["sample_id"].duplicated(keep=False)
+    ].copy()
+
+working = working.reset_index(drop=True)
+
+# ============================================================
+# FINAL COLUMN ORDER
+# ============================================================
+metadata_columns = [
+    "sample_id",
+    "date",
+    "id",
+    "site_code",
+    "pollutant",
+]
+
+final_analyte_columns = [
+    column
+    for column in working.columns
+    if column not in {
+        *metadata_columns,
+        "sample_id_valid",
+    }
+]
+
+cleaned_output = working[
+    metadata_columns + final_analyte_columns
+].copy()
+
+cleaned_output["date"] = pd.to_datetime(
+    cleaned_output["date"],
+    errors="coerce",
+).dt.date
+
+# ============================================================
+# QUALITY-CONTROL SUMMARY
+# ============================================================
+invalid_id_count = int((~parsed_ids["sample_id_valid"]).sum())
+valid_id_count = int(parsed_ids["sample_id_valid"].sum())
+missing_numeric_count = int(
+    cleaned_output[final_analyte_columns].isna().sum().sum()
+) if final_analyte_columns else 0
+
+qc_records = [
+    {"check": "Rows read after header cleaning", "value": len(flattened)},
+    {"check": "Valid sample IDs", "value": valid_id_count},
+    {"check": "Invalid sample IDs", "value": invalid_id_count},
+    {
+        "check": "Rows matching duplicated sample IDs before duplicate rule",
+        "value": duplicates_before_rule,
+    },
+    {
+        "check": "Rows removed by selected rules",
+        "value": rows_before_rules - len(working),
+    },
+    {"check": "Rows in final output", "value": len(cleaned_output)},
+    {
+        "check": "Missing values across analyte columns",
+        "value": missing_numeric_count,
+    },
+]
+qc_summary = pd.DataFrame(qc_records)
+
+st.subheader("Cleaning summary")
+metric_columns = st.columns(4)
+metric_columns[0].metric("Final rows", len(cleaned_output))
+metric_columns[1].metric("Valid sample IDs", valid_id_count)
+metric_columns[2].metric("Invalid sample IDs", invalid_id_count)
+metric_columns[3].metric("Detected analyte columns", len(final_analyte_columns))
+
+if invalid_id_count:
+    invalid_examples = (
+        flattened.loc[
+            ~parsed_ids["sample_id_valid"],
+            "sample_id",
+        ]
+        .dropna()
+        .astype(str)
+        .head(10)
+        .tolist()
+    )
+    st.warning(
+        "Some sample IDs could not be parsed. Expected structure: "
+        "SITE_DATE_POLLUTANT, for example APS_170325_PM2.5. "
+        f"Examples: {invalid_examples}"
+    )
+
+st.subheader("Cleaned data preview")
+st.dataframe(
+    cleaned_output.head(100),
+    use_container_width=True,
+    hide_index=True,
+)
+
+with st.expander("Detected units", expanded=False):
+    st.dataframe(
+        units_table,
+        use_container_width=True,
+        hide_index=True,
+    )
+
+with st.expander("Quality-control details", expanded=False):
+    st.dataframe(
+        qc_summary,
+        use_container_width=True,
+        hide_index=True,
+    )
+
+# ============================================================
+# DOWNLOADS
+# ============================================================
+csv_bytes = cleaned_output.to_csv(index=False).encode("utf-8-sig")
+excel_bytes = create_excel_download(
+    cleaned_output,
+    units_table,
+    qc_summary,
+)
+
+st.subheader("Download cleaned data")
+download_columns = st.columns(2)
+
+download_columns[0].download_button(
+    "Download cleaned CSV",
+    data=csv_bytes,
+    file_name="cleaned_metal_data.csv",
+    mime="text/csv",
+    use_container_width=True,
+)
+
+download_columns[1].download_button(
+    "Download cleaned Excel",
+    data=excel_bytes,
+    file_name="cleaned_metal_data.xlsx",
+    mime=(
+        "application/vnd.openxmlformats-officedocument."
+        "spreadsheetml.sheet"
+    ),
+    use_container_width=True,
+)
