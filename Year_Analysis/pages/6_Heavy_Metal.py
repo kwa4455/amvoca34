@@ -396,9 +396,28 @@ def flatten_lab_table(
 # ============================================================
 # SAMPLE ID PARSING
 # ============================================================
-SAMPLE_ID_PATTERN = re.compile(
-    r"^(?P<site>.+?)_(?P<date>\d{6}|\d{8})_(?P<pollutant>.+)$"
-)
+# Supported sample-ID structures:
+# 1. SITE_DATE_POLLUTANT, e.g. APS_170325_PM2.5
+# 2. SITE_DATEPOLLUTANT,  e.g. 1_031118PM10
+SAMPLE_ID_PATTERNS = [
+    re.compile(
+        r"^(?P<site>.+?)_(?P<date>\d{6}|\d{8})_(?P<pollutant>.+)$",
+        flags=re.IGNORECASE,
+    ),
+    re.compile(
+        r"^(?P<site>.+?)_(?P<date>\d{6}|\d{8})(?P<pollutant>[A-Za-z][A-Za-z0-9.]*)$",
+        flags=re.IGNORECASE,
+    ),
+]
+
+
+def match_sample_id(text: str) -> Optional[re.Match]:
+    """Return the first matching supported sample-ID structure."""
+    for pattern in SAMPLE_ID_PATTERNS:
+        match = pattern.fullmatch(text)
+        if match:
+            return match
+    return None
 
 
 def normalize_pollutant(value: str) -> str:
@@ -453,7 +472,7 @@ def parse_sample_ids(
 
     for sample_id in sample_ids.astype("string").fillna(""):
         text = str(sample_id).strip()
-        match = SAMPLE_ID_PATTERN.match(text)
+        match = match_sample_id(text)
 
         if not match:
             records.append(
@@ -1004,9 +1023,10 @@ if invalid_id_count:
         .tolist()
     )
     st.warning(
-        "Some sample IDs could not be parsed. Expected structure: "
-        "SITE_DATE_POLLUTANT, for example APS_170325_PM2.5. "
-        f"Examples: {invalid_examples}"
+        "Some sample IDs could not be parsed. Supported structures are "
+        "SITE_DATE_POLLUTANT, such as APS_170325_PM2.5, and "
+        "SITE_DATEPOLLUTANT, such as 1_031118PM10. "
+        f"Examples not parsed: {invalid_examples}"
     )
 
 st.subheader("Cleaned data preview")
