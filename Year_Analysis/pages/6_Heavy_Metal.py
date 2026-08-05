@@ -481,6 +481,7 @@ def parse_sample_ids(
                     "date": pd.NaT,
                     "pollutant": pd.NA,
                     "sample_id_valid": False,
+                    "invalid_reason": "Unsupported sample ID structure",
                 }
             )
             continue
@@ -490,6 +491,8 @@ def parse_sample_ids(
             date_format_label,
         )
 
+        date_is_valid = not pd.isna(date_value)
+
         records.append(
             {
                 "site_code": match.group("site").strip(),
@@ -497,7 +500,12 @@ def parse_sample_ids(
                 "pollutant": normalize_pollutant(
                     match.group("pollutant")
                 ),
-                "sample_id_valid": not pd.isna(date_value),
+                "sample_id_valid": date_is_valid,
+                "invalid_reason": (
+                    pd.NA
+                    if date_is_valid
+                    else "Date could not be parsed"
+                ),
             }
         )
 
@@ -565,6 +573,7 @@ def create_excel_download(
     long_data: pd.DataFrame,
     units: pd.DataFrame,
     qc_summary: pd.DataFrame,
+    invalid_ids: pd.DataFrame,
 ) -> bytes:
     output = io.BytesIO()
 
@@ -587,6 +596,11 @@ def create_excel_download(
         qc_summary.to_excel(
             writer,
             sheet_name="QC_Summary",
+            index=False,
+        )
+        invalid_ids.to_excel(
+            writer,
+            sheet_name="Invalid_Sample_IDs",
             index=False,
         )
 
@@ -1005,29 +1019,62 @@ metric_columns[1].metric("Valid sample IDs", valid_id_count)
 metric_columns[2].metric("Invalid sample IDs", invalid_id_count)
 metric_columns[3].metric("Detected metals", len(analyte_names))
 
+# Build a complete invalid-ID report from the original parsed rows.
+invalid_mask = (
+    ~parsed_ids["sample_id_valid"]
+    .fillna(False)
+    .astype(bool)
+    .to_numpy()
+)
+
+invalid_ids_table = pd.DataFrame(
+    {
+        "source_row": (
+            pd.Series(range(1, len(flattened) + 1))
+            .loc[invalid_mask]
+            .to_numpy()
+        ),
+        "sample_id": (
+            flattened.loc[invalid_mask, "sample_id"]
+            .astype("string")
+            .fillna("")
+            .to_numpy()
+        ),
+        "reason": (
+            parsed_ids.loc[invalid_mask, "invalid_reason"]
+            .astype("string")
+            .fillna("Invalid sample ID")
+            .to_numpy()
+        ),
+    }
+)
+
 if invalid_id_count:
-    # Use a NumPy Boolean array to select by row position rather than
-    # allowing pandas to align potentially different index labels.
-    invalid_mask = (
-        ~parsed_ids["sample_id_valid"]
-        .fillna(False)
-        .astype(bool)
-        .to_numpy()
+    st.warning(
+        f"{invalid_id_count} sample ID(s) could not be parsed. "
+        "Supported structures include APS_170325_PM2.5 and "
+        "1_031118PM10."
     )
 
-    invalid_examples = (
-        flattened.loc[invalid_mask, "sample_id"]
-        .dropna()
-        .astype(str)
-        .head(10)
-        .tolist()
-    )
-    st.warning(
-        "Some sample IDs could not be parsed. Supported structures are "
-        "SITE_DATE_POLLUTANT, such as APS_170325_PM2.5, and "
-        "SITE_DATEPOLLUTANT, such as 1_031118PM10. "
-        f"Examples not parsed: {invalid_examples}"
-    )
+    with st.expander(
+        f"View all invalid sample IDs ({invalid_id_count})",
+        expanded=True,
+    ):
+        st.dataframe(
+            invalid_ids_table,
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        st.download_button(
+            "Download invalid sample IDs",
+            data=invalid_ids_table.to_csv(index=False).encode("utf-8-sig"),
+            file_name="invalid_sample_ids.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+else:
+    st.success("All sample IDs were parsed successfully.")
 
 st.subheader("Cleaned data preview")
 preview_tab_wide, preview_tab_long = st.tabs(
@@ -1076,6 +1123,7 @@ excel_bytes = create_excel_download(
     cleaned_long_output,
     units_table,
     qc_summary,
+    invalid_ids_table,
 )
 
 st.subheader("Download cleaned data")
