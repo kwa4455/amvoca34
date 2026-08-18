@@ -1,614 +1,1114 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import altair as alt
-from PIL import Image
+
+from datetime import datetime, date, time
+from zoneinfo import ZoneInfo
 from io import BytesIO
-
-# --- Page Configuration ---
-st.set_page_config(page_title="Airqo LCS Data Analysis",page_icon="🧫", layout="wide")
+import zipfile
 
 
-# Insert your CSS here
-st.markdown("""
+# ============================================================
+# PAGE CONFIGURATION
+# ============================================================
+
+st.set_page_config(
+    page_title="Air Quality Automatic Data Generator",
+    page_icon="🌍",
+    layout="wide"
+)
+
+
+# ============================================================
+# CUSTOM CSS
+# ============================================================
+
+st.markdown(
+    """
     <style>
-    /* --- your CSS --- */
-    body, .stApp {
-        font-family: 'Poppins', sans-serif;
-        transition: all 0.5s ease;
-    }
-    
-    /* Light Mode */
-    body.light-mode, .stApp.light-mode {
-        background: linear-gradient(135deg, #f8fdfc, #d8f3dc);
-        color: #1b4332;
-    }
-    
-    /* Dark Mode */
-    body.dark-mode, .stApp.dark-mode {
-        background: linear-gradient(135deg, #0e1117, #161b22);
-        color: #e6edf3;
-    }
-    
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background: rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(12px);
-        border-right: 2px solid #74c69d;
-        transition: all 0.5s ease;
+
+    .main-title {
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 5px;
     }
 
-    /* Buttons */
-    .stButton>button, .stDownloadButton>button {
-        background: linear-gradient(135deg, #40916c, #52b788);
-        color: white;
-        border: none;
-        border-radius: 10px;
-        padding: 0.7em 1.5em;
-        font-weight: bold;
-        font-size: 1rem;
-        box-shadow: 0 0 15px #52b788;
-        transition: 0.3s ease;
-    }
-    
-    .stButton>button:hover, .stDownloadButton>button:hover {
-        background: linear-gradient(135deg, #2d6a4f, #40916c);
-        box-shadow: 0 0 25px #74c69d, 0 0 35px #74c69d;
-        transform: scale(1.05);
+    .subtitle {
+        font-size: 17px;
+        color: #555;
+        margin-bottom: 25px;
     }
 
-    /* Custom Scrollbars */
-    ::-webkit-scrollbar {
-        width: 8px;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #74c69d;
-        border-radius: 10px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-        background: #52b788;
+    .section-title {
+        font-size: 22px;
+        font-weight: 600;
+        margin-top: 20px;
+        margin-bottom: 10px;
     }
 
-    /* Glowing Title */
-    .glow-text {
-        text-align: center;
-        font-size: 3em;
-        color: #52b788;
-        text-shadow: 0 0 5px #52b788, 0 0 10px #52b788, 0 0 20px #52b788;
-        margin-bottom: 20px;
-    }
-
-    /* Smooth theme transition */
-    html, body, .stApp {
-        transition: background 0.5s ease, color 0.5s ease;
-    }
-
-    /* Download Button Specific */
-    .stDownloadButton>button {
-        background: linear-gradient(135deg, #1b4332, #2d6a4f);
-        box-shadow: 0 0 10px #1b4332;
-    }
-
-    /* Button Press Animation */
-    .stButton>button:active, .stDownloadButton>button:active {
-        transform: scale(0.97);
-    }
-
-    /* Tables */
-    .stDataFrame, .stTable {
-        background: rgba(255, 255, 255, 0.6);
-        border-radius: 12px;
-        backdrop-filter: blur(10px);
-        padding: 1rem;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        overflow: hidden;
-        font-size: 15px;
-    }
-
-    /* Table Headers */
-    thead tr th {
-        background: linear-gradient(135deg, #52b788, #74c69d);
-        color: white;
-        font-weight: bold;
-        text-align: center;
-        padding: 0.5em;
-    }
-
-    /* Table Rows */
-    tbody tr:nth-child(even) {
-        background-color: #e9f7ef;
-    }
-    tbody tr:nth-child(odd) {
-        background-color: #ffffff;
-    }
-    tbody tr:hover {
-        background-color: #b7e4c7;
-        transition: background-color 0.3s ease;
-    }
-
-    /* Graph iframe Glass Effect */
-    .element-container iframe {
-        background: rgba(255, 255, 255, 0.5) !important;
-        backdrop-filter: blur(10px);
-        border-radius: 12px;
-        padding: 10px;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Dark Mode Table */
-    body.dark-mode .stDataFrame, body.dark-mode .stTable {
-        background: #161b22cc;
-        border-radius: 10px;
-        backdrop-filter: blur(8px);
-        font-size: 15px;
-        overflow: hidden;
-    }
-    body.dark-mode thead tr th {
-        background: linear-gradient(135deg, #238636, #2ea043);
-        color: #ffffff;
-        font-weight: bold;
-        text-align: center;
-    }
-    body.dark-mode tbody tr:nth-child(even) {
-        background: linear-gradient(90deg, #21262d, #30363d);
-        color: #e6edf3;
-        transition: all 0.3s ease;
-    }
-    body.dark-mode tbody tr:nth-child(odd) {
-        background: linear-gradient(90deg, #161b22, #21262d);
-        color: #e6edf3;
-        transition: all 0.3s ease;
-    }
-    body.dark-mode tbody tr:hover {
-        background: linear-gradient(90deg, #21262d, #30363d);
-        box-shadow: 0 0 15px #58a6ff;
-        transform: scale(1.01);
-    }
-
-    /* Dark Mode Graph Glow */
-    body.dark-mode .element-container iframe {
-        background: rgba(22, 27, 34, 0.5) !important;
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        padding: 10px;
-        border: 2px solid #58a6ff;
-        box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff;
-        animation: pulse-glow-dark 3s infinite ease-in-out;
-    }
-
-    /* Glow Animations */
-    @keyframes pulse-glow {
-      0% { box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }
-      50% { box-shadow: 0 0 25px #40916c, 0 0 45px #2d6a4f; }
-      100% { box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }
-    }
-    @keyframes pulse-glow-dark {
-      0% { box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }
-      50% { box-shadow: 0 0 25px #3b82f6, 0 0 45px #2563eb; }
-      100% { box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }
-    }
     </style>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
 
+# ============================================================
+# TITLE
+# ============================================================
+
+st.markdown(
+    '<div class="main-title">'
+    '🌍 Air Quality Automatic Data Generator'
+    '</div>',
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    '<div class="subtitle">'
+    'Generate hourly air-quality monitoring data using '
+    'user-defined locations, dates, coordinates and pollutant ranges.'
+    '</div>',
+    unsafe_allow_html=True
+)
 
 
-# --- Title and Logo ---
-st.title("📊 Airqo LCS Data Analysis")
+# ============================================================
+# SIDEBAR
+# ============================================================
+
+st.sidebar.header("⚙️ Generator Settings")
 
 
-@st.cache_data(ttl=600)
+# ============================================================
+# LOCATION INFORMATION
+# ============================================================
 
-def cleaned(df):
-    df = df.rename(columns=lambda x: x.strip().lower())
-    required_columns = ['datetime', 'site', 'pm25', 'pm10']
-    df = df[[col for col in required_columns if col in df.columns]]
-    df = df.dropna(axis=1, how='all').dropna()
-   
+st.sidebar.markdown("### 📍 Location Information")
 
-    df['year'] = df['datetime'].dt.year
-    df['month'] = df['datetime'].dt.to_period('M').astype(str)
-    df['quarter'] = df['datetime'].dt.to_period('Q').astype(str)
-    df['day'] = df['datetime'].dt.date
-    df['dayofweek'] = df['datetime'].dt.day_name()
-    df['weekday_type'] = df['datetime'].dt.weekday.apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
-    df['season'] = df['datetime'].dt.month.apply(lambda x: 'Harmattan' if x in [12, 1, 2] else 'Non-Harmattan')
+location_id = st.sidebar.text_input(
+    "Location ID",
+    value="001"
+)
 
-    daily_counts = df.groupby(['site', 'month'])['day'].nunique().reset_index(name='daily_counts')
-    sufficient_sites = daily_counts[daily_counts['daily_counts'] >= 15][['site', 'month']]
-    df = df.merge(sufficient_sites, on=['site', 'month'])
-    return df
+location_name = st.sidebar.text_input(
+    "Location Name",
+    value="Monitoring Site 1"
+)
 
-def parse_dates(df):
-    for col in df.columns:
-        if 'date' in col.lower() or 'time' in col.lower():
-            try:
-                df['datetime'] = pd.to_datetime(df[col], errors='coerce', infer_datetime_format=True)
-                df = df.dropna(subset=['datetime'])
-                return df
-            except:
-                continue
-    return df
-
-def standardize_columns(df):
-    pm25_cols = ['pm25', 'PM2.5', 'pm_2_5', 'pm25_avg', 'pm2.5']
-    pm10_cols = ['pm10', 'PM10', 'pm_10']
-    site_cols = ['site', 'station', 'location']
-
-    for col in df.columns:
-        col_lower = col.strip().lower()
-        if col_lower in [c.lower() for c in pm25_cols]:
-            df.rename(columns={col: 'pm25'}, inplace=True)
-        if col_lower in [c.lower() for c in pm10_cols]:
-            df.rename(columns={col: 'pm10'}, inplace=True)
-        if col_lower in [c.lower() for c in site_cols]:
-            df.rename(columns={col: 'site'}, inplace=True)
-    return df
-
-def compute_aggregates(df, label, pollutant):
-    aggregates = {}
-    aggregates[f'{label} - Daily Avg ({pollutant})'] = df.groupby(['day', 'site'])[pollutant].mean().reset_index().round(1)
-    aggregates[f'{label} - Monthly Avg ({pollutant})'] = df.groupby(['month', 'site'])[pollutant].mean().reset_index().round(1)
-    aggregates[f'{label} - Quarterly Avg ({pollutant})'] = df.groupby(['quarter', 'site'])[pollutant].mean().reset_index().round(1)
-    aggregates[f'{label} - Yearly Avg ({pollutant})'] = df.groupby(['year', 'site'])[pollutant].mean().reset_index().round(1)
-    aggregates[f'{label} - Day of Week Avg ({pollutant})'] = df.groupby(['dayofweek', 'site'])[pollutant].mean().reset_index().round(1)
-    aggregates[f'{label} - Weekday Type Avg ({pollutant})'] = df.groupby(['weekday_type', 'site'])[pollutant].mean().reset_index().round(1)
-    aggregates[f'{label} - Season Avg ({pollutant})'] = df.groupby(['season', 'site'])[pollutant].mean().reset_index().round(1)
-    return aggregates
-
-def calculate_exceedances(df):
-    daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
-        'pm25': 'mean',
-        'pm10': 'mean'
-    })
-    pm25_exceed = daily_avg[daily_avg['pm25'] > 35].groupby(['year', 'site']).size().reset_index(name='PM25_Exceedance_Count')
-    pm10_exceed = daily_avg[daily_avg['pm10'] > 70].groupby(['year', 'site']).size().reset_index(name='PM10_Exceedance_Count')
-    total_days = daily_avg.groupby(['year', 'site']).size().reset_index(name='Total_Records')
-
-    exceedance = total_days.merge(pm25_exceed, on=['year', 'site'], how='left') \
-                           .merge(pm10_exceed, on=['year', 'site'], how='left')
-    exceedance.fillna(0, inplace=True)
-    exceedance['PM25_Exceedance_Percent'] = round((exceedance['PM25_Exceedance_Count'] / exceedance['Total_Records']) * 100, 1)
-    exceedance['PM10_Exceedance_Percent'] = round((exceedance['PM10_Exceedance_Count'] / exceedance['Total_Records']) * 100, 1)
-
-    return exceedance
-
-def calculate_min_max(df):
-    daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
-        'pm25': 'mean',
-        'pm10': 'mean'
-    })
-    df_min_max = daily_avg.groupby(['year', 'site', 'month'], as_index=False).agg(
-        daily_avg_pm10_max=('pm10', lambda x: round(x.max(), 1)),
-        daily_avg_pm10_min=('pm10', lambda x: round(x.min(), 1)),
-        daily_avg_pm25_max=('pm25', lambda x: round(x.max(), 1)),
-        daily_avg_pm25_min=('pm25', lambda x: round(x.min(), 1))
-    )
-    return df_min_max
-
-def calculate_aqi_and_category(df):
-    daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
-        'pm25': 'mean'
-    })
-    breakpoints = [
-        (0.0, 9.0, 0, 50),
-        (9.1, 35.4, 51, 100),
-        (35.5, 55.4, 101, 150),
-        (55.5, 125.4, 151, 200),
-        (125.5, 225.4, 201, 300),
-        (225.5, 325.4, 301, 500),
-        (325.5, 99999.9, 501, 999)
+location_type_option = st.sidebar.selectbox(
+    "Location Type",
+    [
+        "Urban",
+        "Industrial",
+        "Residential",
+        "Commercial",
+        "Traffic",
+        "Background",
+        "Rural",
+        "Other"
     ]
+)
 
-    def calculate_aqi(pm):
-        for low, high, aqi_low, aqi_high in breakpoints:
-            if low <= pm <= high:
-                return round(((pm - low) * (aqi_high - aqi_low) / (high - low)) + aqi_low)
-        return np.nan
+if location_type_option == "Other":
 
-    daily_avg['AQI'] = daily_avg['pm25'].apply(calculate_aqi)
-    conditions = [
-        (daily_avg['AQI'] > 300),
-        (daily_avg['AQI'] > 200),
-        (daily_avg['AQI'] > 150),
-        (daily_avg['AQI'] > 100),
-        (daily_avg['AQI'] > 50),
-        (daily_avg['AQI'] >= 0)
-    ]
-    remarks = ['Hazardous', 'Very Unhealthy', 'Unhealthy', 'Unhealthy for Sensitive Groups', 'Moderate', 'Good']
-    daily_avg['AQI_Remark'] = np.select(conditions, remarks, default='Unknown')
-
-    remarks_counts = daily_avg.groupby(['site', 'year', 'AQI_Remark']).size().reset_index(name='Count')
-    remarks_counts['Total_Count_Per_Site_Year'] = remarks_counts.groupby(['site', 'year'])['Count'].transform('sum')
-    remarks_counts['Percent'] = round((remarks_counts['Count'] / remarks_counts['Total_Count_Per_Site_Year']) * 100, 1)
-
-    return daily_avg, remarks_counts
-
-def to_csv_download(df):
-    return BytesIO(df.to_csv(index=False).encode('utf-8'))
-
-def plot_chart(df, x, y, color, chart_type="line", title=""):
-    # Automatically detect Streamlit theme
-    streamlit_theme = st.get_option("theme.base")
-    theme = streamlit_theme if streamlit_theme else "Light"
-    
-    background = '#1c1c1c' if theme == 'dark' else 'white'
-    font_color = 'white' if theme == 'dark' else 'black'
-    
-    base = alt.Chart(df).encode(
-        x=x,
-        y=y,
-        color=color,
-        tooltip=[x, y, color]
-    ).properties(
-        width=700,
-        height=400,
-        title=alt.TitleParams(text=title, color=font_color)
-    ).configure(
-        background=background,
-        view={"stroke": None},
-        axis={"labelColor": font_color, "titleColor": font_color}
+    location_type = st.sidebar.text_input(
+        "Enter Location Type",
+        value=""
     )
-
-    if chart_type == "line":
-        return base.mark_line(point=True)
-    else:
-        return base.mark_bar()
-
-
-# --- Main App ---
-
-uploaded_files = st.file_uploader("Upload up to 4 datasets", type=['csv', 'xlsx'], accept_multiple_files=True)
-
-if uploaded_files:
-    all_outputs = {}
-    site_options = set()
-    year_options = set()
-    dfs = {}
-
-    for file in uploaded_files:
-        label = file.name.split('.')[0]
-        ext = file.name.split('.')[-1]
-        df = pd.read_excel(file) if ext == 'xlsx' else pd.read_csv(file)
-
-        df = parse_dates(df)
-        df = standardize_columns(df)
-        df = cleaned(df)
-
-        if 'datetime' not in df.columns or 'pm25' not in df.columns or 'pm10' not in df.columns or 'site' not in df.columns:
-            st.warning(f"⚠️ Could not process {label}: missing columns.")
-            continue
-
-        dfs[label] = df
-        site_options.update(df['site'].unique())
-        year_options.update(df['year'].unique())
-
-    with st.sidebar:
-        selected_years = st.multiselect("📅 Filter by Year", sorted(year_options))
-        selected_sites = st.multiselect("🏢 Filter by Site", sorted(site_options))
-
-    tabs = st.tabs(["Aggregated Means", "Exceedances", "AQI Stats", "Min/Max Values"])
-    with tabs[0]:  # Aggregated Means
-        st.header("📊 Aggregated Means")
-        for label, df in dfs.items():
-            st.subheader(f"Dataset: {label}")
-            site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_agg_{label}")
-            filtered_df = df.copy()
-            if selected_years:
-                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
-            if site_in_tab:
-                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
-            selected_pollutants = ['pm25', 'pm10']
-            valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
-            if not valid_pollutants:
-                st.warning(f"No valid pollutants found in {label}")
-
-            selected_display_pollutants = st.multiselect(
-                f"Select Pollutants to Display for {label}",
-                options=["All"] + valid_pollutants,
-                default=["All"],
-                key=f"pollutants_{label}"
-            )
-            if "All" in selected_display_pollutants:
-                selected_display_pollutants = valid_pollutants
-
-            aggregate_levels = [
-                ('Daily Avg', ['day', 'site']),
-                ('Monthly Avg', ['month', 'site']),
-                ('Quarterly Avg', ['quarter', 'site']),
-                ('Yearly Avg', ['year', 'site']),
-                ('Day of Week Avg', ['dayofweek', 'site']),
-                ('Weekday Type Avg', ['weekday_type', 'site']),
-                ('Season Avg', ['season', 'site'])
-            ]
-            for level_name, group_keys in aggregate_levels:
-                agg_label = f"{label} - {level_name}"
-                agg_dfs = []
-                for pollutant in valid_pollutants:
-                    agg_df = filtered_df.groupby(group_keys)[pollutant].mean().reset_index().round(1)
-                    agg_dfs.append(agg_df)
-                from functools import reduce
-                merged_df = reduce(lambda left, right: pd.merge(left, right, on=group_keys, how='outer'), agg_dfs)
-                display_cols = group_keys + [p for p in selected_display_pollutants if p in merged_df.columns]
-                editable_df = merged_df[display_cols]
-                
-                st.data_editor(
-                    editable_df,
-                    use_container_width=True,
-                    column_config={col: {"disabled": True} for col in editable_df.columns},
-                    num_rows="dynamic",
-                    key=f"editor_{label}_{agg_label}"
-                )
-                st.download_button(
-                    label=f"📥 Download {agg_label}",
-                    data=to_csv_download(editable_df),
-                    file_name=f"{label}_{agg_label.replace(' ', '_')}.csv",
-                    mime="text/csv"
-                )
-                st.markdown("---")
-                auto_expand = "Yearly Avg" in agg_label
-                with st.expander(f"📈 Show Charts for {agg_label}", expanded=auto_expand):
-                    default_chart_type = "line" if any(keyword in level_name for keyword in ['Daily', 'Monthly', 'Quarterly', 'Yearly']) else "bar"
-                    chart_type_choice = st.selectbox(
-                        f"Select Chart Type for {agg_label}",
-                        options=["line", "bar"],
-                        index=0 if "Yearly" in agg_label else 1,
-                        key=f"chart_type_{label}_{agg_label}"
-                    )
-                    x_axis = next(
-                        (col for col in editable_df.columns if col not in ["site"] + valid_pollutants),
-                        None
-                    )
-                    if not x_axis or x_axis not in editable_df.columns:
-                        st.warning(f"Could not determine x-axis column for {agg_label}")
-                        continue
-                    safe_pollutants = [
-                        p for p in selected_display_pollutants if p in editable_df.columns
-                    ]
-                    if not safe_pollutants:
-                        st.warning(f"No valid pollutant columns to plot for {agg_label}")
-                        continue
-                    try:
-                        df_melted = editable_df.melt(
-                            id_vars=["site", x_axis],
-                            value_vars=safe_pollutants,
-                            var_name="pollutant",
-                            value_name="value"
-                        )
-                        if "pollutant" not in df_melted.columns:
-                            st.error(f"'pollutant' column missing in melted DataFrame for {agg_label}")
-                            st.dataframe(df_melted.head())
-                            continue
-                        color_map = alt.Scale(domain=["pm25", "pm10"], range=["#1f77b4", "#ff7f0e"])
-                        chart = plot_chart(
-                            df_melted,
-                            x=x_axis,
-                            y="value",
-                            color="pollutant",  # Changed to allow side-by-side comparison of pm10 and pm25
-                            chart_type=chart_type_choice,
-                            title=f"{agg_label} - {', '.join(valid_pollutants)}"
-                        )
-                        st.altair_chart(chart, use_container_width=True)
-                    except Exception as e:
-                        st.error(f"Error plotting chart: {e}")
-
-    
-    with tabs[1]:  # Exceedances
-        st.header("🚨 Exceedances")
-        for label, df in dfs.items():
-            st.subheader(f"Dataset: {label}")
-            site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_exc_{label}")
-            filtered_df = df.copy()
-            if selected_years:
-                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
-            if site_in_tab:
-                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
-
-            exceedances = calculate_exceedances(filtered_df)
-            st.dataframe(exceedances, use_container_width=True)
-            st.download_button(f"⬇️ Download Exceedances - {label}", to_csv_download(exceedances), file_name=f"Exceedances_{label}.csv")
-
-    with tabs[2]:  # AQI
-        st.header("🌫️ AQI Stats")
-        for label, df in dfs.items():
-            st.subheader(f"Dataset: {label}")
-            site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_aqi_{label}")
-            filtered_df = df.copy()
-            if selected_years:
-                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
-            if site_in_tab:
-                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
-
-            daily_avg, remarks_counts = calculate_aqi_and_category(filtered_df)
-            st.dataframe(remarks_counts, use_container_width=True)
-            st.dataframe(daily_avg, use_container_width=True)
-            st.download_button(f"⬇️ Download Daily Avg - {label}", to_csv_download(daily_avg), file_name=f"DailyAvg_{label}.csv")
-            st.download_button(f"⬇️ Download AQI - {label}", to_csv_download(remarks_counts), file_name=f"AQI_{label}.csv")
-
-            aqi_colors = {
-                'Good': '#00e400',
-                'Moderate': '#ffff00',
-                'Unhealthy for Sensitive Groups': '#ff7e00',
-                'Unhealthy': '#ff0000',
-                'Very Unhealthy': '#8f3f97',
-                'Hazardous': '#7e0023'
-            }
-            remarks_counts['Color'] = remarks_counts['AQI_Remark'].map(aqi_colors)
-            aqi_chart = alt.Chart(remarks_counts).mark_bar().encode(
-                x=alt.X('Percent:Q', title='% Time in AQI Category'),
-                y=alt.Y('AQI_Remark:N', sort='-x', title='AQI Category'),
-                color=alt.Color('AQI_Remark:N', scale=alt.Scale(domain=list(aqi_colors.keys()), range=list(aqi_colors.values())), legend=None),
-                tooltip=['site', 'year', 'AQI_Remark', 'Percent']
-            ).properties(width=700, height=400, title="AQI Remark Percentages")
-            st.altair_chart(aqi_chart, use_container_width=True)
-
-    with tabs[3]:  # Min/Max
-        st.header("🔥 Min/Max Values")
-        for label, df in dfs.items():
-            st.subheader(f"Dataset: {label}")
-            site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_minmax_{label}")
-            filtered_df = df.copy()
-            if selected_years:
-                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
-            if site_in_tab:
-                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
-
-            min_max = calculate_min_max(filtered_df)
-            st.dataframe(min_max, use_container_width=True)
-            st.download_button(f"⬇️ Download MinMax - {label}", to_csv_download(min_max), file_name=f"MinMax_{label}.csv")
 
 else:
-    st.info("Upload CSV or Excel files from different air quality sources to begin.")
+
+    location_type = location_type_option
 
 
+# ============================================================
+# SENSOR INFORMATION
+# ============================================================
+
+st.sidebar.markdown("### 📡 Sensor Information")
+
+sensor_id = st.sidebar.text_input(
+    "Sensor ID",
+    value=f"SENSOR_{location_id}"
+)
 
 
-metals = ['cd', 'cr', 'hg', 'al', 'as', 'mn', 'pb']
-errors = [f'{metal}_error' for metal in metals]
-required_columns = ['date', 'site'] + metals + errors
+# ============================================================
+# COORDINATES
+# ============================================================
+
+st.sidebar.markdown("### 🌐 Coordinates")
+
+latitude = st.sidebar.number_input(
+    "Latitude",
+    min_value=-90.0,
+    max_value=90.0,
+    value=5.603700,
+    step=0.000001,
+    format="%.6f"
+)
+
+longitude = st.sidebar.number_input(
+    "Longitude",
+    min_value=-180.0,
+    max_value=180.0,
+    value=-0.187000,
+    step=0.000001,
+    format="%.6f"
+)
 
 
+# ============================================================
+# DATE RANGE
+# ============================================================
+
+st.sidebar.markdown("### 📅 Date Range")
+
+start_date = st.sidebar.date_input(
+    "Start Date",
+    value=date(2026, 1, 1)
+)
+
+end_date = st.sidebar.date_input(
+    "End Date",
+    value=date(2026, 1, 7)
+)
 
 
+# ============================================================
+# TIME ZONE
+# ============================================================
+
+st.sidebar.markdown("### 🕐 Time Zone")
+
+timezone_name = st.sidebar.selectbox(
+    "Local Time Zone",
+    [
+        "Africa/Accra",
+        "Africa/Lagos",
+        "Africa/Nairobi",
+        "Africa/Johannesburg",
+        "UTC"
+    ],
+    index=0
+)
 
 
-metals = ['cd', 'cr', 'hg', 'al', 'as', 'mn', 'pb']
-errors = [f'{metal}_error' for metal in metals]
-pollutant_cols = metals + errors
-required_columns = ['date', 'site'] + pollutant_cols
+# ============================================================
+# PLACE OPENING HOURS
+# ============================================================
 
-def standardize_columns(df):
-    # Strip whitespace and convert to lowercase
-    df.columns = [col.strip().lower() for col in df.columns]
-    
-    # Check for missing required columns
-    missing = [col for col in required_columns if col not in df.columns]
-    if missing:
-        raise ValueError(f"Missing required columns: {', '.join(missing)}")
-    
-    # Optionally keep only required columns
-    df = df[required_columns]
-    
+st.sidebar.markdown("### 🏢 Place Opening Hours")
+
+place_open_option = st.sidebar.selectbox(
+    "Opening Schedule",
+    [
+        "24/7",
+        "Custom Hours"
+    ]
+)
+
+
+if place_open_option == "24/7":
+
+    opening_time = time(0, 0)
+
+    closing_time = time(23, 59)
+
+else:
+
+    opening_time = st.sidebar.time_input(
+        "Opening Time",
+        value=time(6, 0)
+    )
+
+    closing_time = st.sidebar.time_input(
+        "Closing Time",
+        value=time(18, 0)
+    )
+
+
+# ============================================================
+# POLLUTANT RANGES
+# ============================================================
+
+st.sidebar.markdown("### 🧪 Pollutant Ranges")
+
+
+# ------------------------------------------------------------
+# PM2.5
+# ------------------------------------------------------------
+
+st.sidebar.write("**PM2.5**")
+
+pm25_min = st.sidebar.number_input(
+    "PM2.5 Minimum",
+    min_value=0.0,
+    value=5.0,
+    step=0.1
+)
+
+pm25_max = st.sidebar.number_input(
+    "PM2.5 Maximum",
+    min_value=0.0,
+    value=80.0,
+    step=0.1
+)
+
+
+# ------------------------------------------------------------
+# PM1
+# ------------------------------------------------------------
+
+st.sidebar.write("**PM1**")
+
+pm1_min = st.sidebar.number_input(
+    "PM1 Minimum",
+    min_value=0.0,
+    value=2.0,
+    step=0.1
+)
+
+pm1_max = st.sidebar.number_input(
+    "PM1 Maximum",
+    min_value=0.0,
+    value=50.0,
+    step=0.1
+)
+
+
+# ------------------------------------------------------------
+# PM10
+# ------------------------------------------------------------
+
+st.sidebar.write("**PM10**")
+
+pm10_min = st.sidebar.number_input(
+    "PM10 Minimum",
+    min_value=0.0,
+    value=10.0,
+    step=0.1
+)
+
+pm10_max = st.sidebar.number_input(
+    "PM10 Maximum",
+    min_value=0.0,
+    value=150.0,
+    step=0.1
+)
+
+
+# ============================================================
+# TEMPERATURE
+# ============================================================
+
+st.sidebar.markdown("### 🌡️ Temperature")
+
+temperature_min = st.sidebar.number_input(
+    "Temperature Minimum (°C)",
+    value=20.0,
+    step=0.1
+)
+
+temperature_max = st.sidebar.number_input(
+    "Temperature Maximum (°C)",
+    value=35.0,
+    step=0.1
+)
+
+
+# ============================================================
+# HUMIDITY
+# ============================================================
+
+st.sidebar.markdown("### 💧 Humidity")
+
+humidity_min = st.sidebar.number_input(
+    "Humidity Minimum (%)",
+    min_value=0.0,
+    max_value=100.0,
+    value=40.0,
+    step=0.1
+)
+
+humidity_max = st.sidebar.number_input(
+    "Humidity Maximum (%)",
+    min_value=0.0,
+    max_value=100.0,
+    value=90.0,
+    step=0.1
+)
+
+
+# ============================================================
+# RANDOM SEED
+# ============================================================
+
+st.sidebar.markdown("### 🎲 Randomization")
+
+random_seed = st.sidebar.number_input(
+    "Random Seed",
+    min_value=1,
+    value=12345,
+    step=1
+)
+
+
+# ============================================================
+# GENERATE FUNCTION
+# ============================================================
+
+def generate_data():
+
+    rng = np.random.default_rng(
+        int(random_seed)
+    )
+
+    # --------------------------------------------------------
+    # TIMEZONE
+    # --------------------------------------------------------
+
+    tz = ZoneInfo(
+        timezone_name
+    )
+
+    # --------------------------------------------------------
+    # START AND END DATETIME
+    # --------------------------------------------------------
+
+    start_datetime = datetime.combine(
+        start_date,
+        time(0, 0)
+    )
+
+    end_datetime = datetime.combine(
+        end_date,
+        time(23, 0)
+    )
+
+    # --------------------------------------------------------
+    # HOURLY TIMESTAMPS
+    # --------------------------------------------------------
+
+    timestamps = pd.date_range(
+        start=start_datetime,
+        end=end_datetime,
+        freq="h"
+    )
+
+    records = []
+
+
+    # ========================================================
+    # GENERATE EACH HOUR
+    # ========================================================
+
+    for ts in timestamps:
+
+        current_date = ts.date()
+
+        current_hour = ts.hour
+
+        current_time = time(
+            current_hour,
+            0
+        )
+
+
+        # ----------------------------------------------------
+        # DETERMINE WHETHER PLACE IS OPEN
+        # ----------------------------------------------------
+
+        if place_open_option == "24/7":
+
+            place_open = "Yes"
+
+        else:
+
+            if opening_time <= closing_time:
+
+                is_open = (
+                    current_time >= opening_time
+                    and
+                    current_time <= closing_time
+                )
+
+            else:
+
+                # Opening period crosses midnight
+
+                is_open = (
+                    current_time >= opening_time
+                    or
+                    current_time <= closing_time
+                )
+
+            place_open = (
+                "Yes"
+                if is_open
+                else "No"
+            )
+
+
+        # ----------------------------------------------------
+        # LOCAL DATETIME
+        # ----------------------------------------------------
+
+        local_dt = datetime(
+            current_date.year,
+            current_date.month,
+            current_date.day,
+            current_hour,
+            0,
+            0,
+            tzinfo=tz
+        )
+
+
+        # ----------------------------------------------------
+        # UTC DATETIME
+        # ----------------------------------------------------
+
+        utc_dt = local_dt.astimezone(
+            ZoneInfo("UTC")
+        )
+
+
+        # ====================================================
+        # GENERATE PM DATA
+        # ====================================================
+
+        # Generate PM1 first
+
+        pm1 = rng.uniform(
+            pm1_min,
+            pm1_max
+        )
+
+
+        # Generate PM2.5 ensuring:
+        #
+        # PM2.5 >= PM1
+        #
+
+        pm25_lower = max(
+            pm25_min,
+            pm1
+        )
+
+        pm25_upper = pm25_max
+
+
+        if pm25_lower <= pm25_upper:
+
+            pm25 = rng.uniform(
+                pm25_lower,
+                pm25_upper
+            )
+
+        else:
+
+            pm25 = pm25_upper
+
+
+        # ----------------------------------------------------
+        # Generate PM10 ensuring:
+        #
+        # PM10 >= PM2.5
+        # ----------------------------------------------------
+
+        pm10_lower = max(
+            pm10_min,
+            pm25
+        )
+
+        pm10_upper = pm10_max
+
+
+        if pm10_lower <= pm10_upper:
+
+            pm10 = rng.uniform(
+                pm10_lower,
+                pm10_upper
+            )
+
+        else:
+
+            pm10 = pm10_upper
+
+
+        # ====================================================
+        # METEOROLOGICAL DATA
+        # ====================================================
+
+        temperature = rng.uniform(
+            temperature_min,
+            temperature_max
+        )
+
+        humidity = rng.uniform(
+            humidity_min,
+            humidity_max
+        )
+
+
+        # ====================================================
+        # CREATE RECORD
+        # ====================================================
+
+        record = {
+
+            "Location ID":
+                location_id,
+
+            "Location Name":
+                location_name,
+
+            "Location Type":
+                location_type,
+
+            "Sensor ID":
+                sensor_id,
+
+            "Place Open":
+                place_open,
+
+            "Local Date/Time":
+                local_dt.strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),
+
+            "UTC Date/Time":
+                utc_dt.strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),
+
+            "PM2.5":
+                round(pm25, 2),
+
+            "Temperature (C)":
+                round(temperature, 2),
+
+            "Humidity (%)":
+                round(humidity, 2),
+
+            "PM1":
+                round(pm1, 2),
+
+            "PM10":
+                round(pm10, 2),
+
+            "latitude":
+                round(latitude, 6),
+
+            "longitude":
+                round(longitude, 6)
+        }
+
+
+        records.append(
+            record
+        )
+
+
+    # ========================================================
+    # CREATE DATAFRAME
+    # ========================================================
+
+    df = pd.DataFrame(
+        records
+    )
+
+
+    # ========================================================
+    # FORCE COLUMN ORDER
+    # ========================================================
+
+    columns = [
+
+        "Location ID",
+        "Location Name",
+        "Location Type",
+        "Sensor ID",
+        "Place Open",
+        "Local Date/Time",
+        "UTC Date/Time",
+        "PM2.5",
+        "Temperature (C)",
+        "Humidity (%)",
+        "PM1",
+        "PM10",
+        "latitude",
+        "longitude"
+
+    ]
+
+    df = df[
+        columns
+    ]
+
+
     return df
 
 
-def compute_all_data(df):
-    agg_dict = {'count': ('site', 'count')}
-    for col in df.columns:
-        if col in metal:
-            agg_dict[f'{col}_mean'] = (col, lambda x: round(x.mean(skipna=True), 2))
-            agg_dict[f'{col}_sd'] = (col, lambda x: round(x.std(skipna=True), 2))
-            agg_dict[f'{col}_median'] = (col, lambda x: round(x.median(skipna=True), 2))
-    try:
-        return df.groupby('site').agg(**agg_dict).reset_index()
-    except KeyError as e:
-        st.error(f"Missing column(s) for aggregation: {e}")
-        return pd.DataFrame()
+# ============================================================
+# VALIDATION
+# ============================================================
+
+errors = []
 
 
+if not str(location_id).strip():
 
-def calculate_exceedances(df):
-    daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
-        'pm25': 'mean',
-        'pm10': 'mean'
-    })
+    errors.append(
+        "Location ID cannot be empty."
+    )
+
+
+if not str(location_name).strip():
+
+    errors.append(
+        "Location Name cannot be empty."
+    )
+
+
+if not str(location_type).strip():
+
+    errors.append(
+        "Location Type cannot be empty."
+    )
+
+
+if not str(sensor_id).strip():
+
+    errors.append(
+        "Sensor ID cannot be empty."
+    )
+
+
+if end_date < start_date:
+
+    errors.append(
+        "End Date must be greater than or equal to Start Date."
+    )
+
+
+if pm25_max < pm25_min:
+
+    errors.append(
+        "PM2.5 maximum must be greater than or equal to minimum."
+    )
+
+
+if pm1_max < pm1_min:
+
+    errors.append(
+        "PM1 maximum must be greater than or equal to minimum."
+    )
+
+
+if pm10_max < pm10_min:
+
+    errors.append(
+        "PM10 maximum must be greater than or equal to minimum."
+    )
+
+
+if temperature_max < temperature_min:
+
+    errors.append(
+        "Temperature maximum must be greater than or equal to minimum."
+    )
+
+
+if humidity_max < humidity_min:
+
+    errors.append(
+        "Humidity maximum must be greater than or equal to minimum."
+    )
+
+
+# ============================================================
+# GENERATE DATA
+# ============================================================
+
+st.markdown(
+    '<div class="section-title">'
+    '🚀 Generate Dataset'
+    '</div>',
+    unsafe_allow_html=True
+)
+
+
+if errors:
+
+    for error in errors:
+
+        st.error(
+            error
+        )
+
+else:
+
+    generate_button = st.button(
+        "🚀 Generate Hourly Data",
+        type="primary",
+        use_container_width=True
+    )
+
+
+    if generate_button:
+
+        with st.spinner(
+            "Generating hourly air-quality data..."
+        ):
+
+            df = generate_data()
+
+            st.session_state[
+                "generated_data"
+            ] = df
+
+
+        st.success(
+            f"Successfully generated "
+            f"{len(df):,} hourly records."
+        )
+
+
+# ============================================================
+# DISPLAY GENERATED DATA
+# ============================================================
+
+if "generated_data" in st.session_state:
+
+    df = st.session_state[
+        "generated_data"
+    ]
+
+
+    # ========================================================
+    # SUMMARY
+    # ========================================================
+
+    st.markdown(
+        '<div class="section-title">'
+        '📊 Dataset Summary'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+
+    with col1:
+
+        st.metric(
+            "Records",
+            f"{len(df):,}"
+        )
+
+
+    with col2:
+
+        st.metric(
+            "Location",
+            location_name
+        )
+
+
+    with col3:
+
+        st.metric(
+            "Sensor",
+            sensor_id
+        )
+
+
+    with col4:
+
+        st.metric(
+            "Latitude",
+            f"{latitude:.6f}"
+        )
+
+
+    with col5:
+
+        st.metric(
+            "Longitude",
+            f"{longitude:.6f}"
+        )
+
+
+    # ========================================================
+    # DATA PREVIEW
+    # ========================================================
+
+    st.markdown(
+        '<div class="section-title">'
+        '👁️ Generated Data'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+
+    st.dataframe(
+        df,
+        use_container_width=True,
+        height=550
+    )
+
+
+    # ========================================================
+    # POLLUTANT SUMMARY
+    # ========================================================
+
+    st.markdown(
+        '<div class="section-title">'
+        '📈 Pollutant Summary'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+
+    summary_columns = [
+
+        "PM2.5",
+        "PM1",
+        "PM10",
+        "Temperature (C)",
+        "Humidity (%)"
+
+    ]
+
+
+    summary = (
+        df[
+            summary_columns
+        ]
+        .describe()
+        .T
+        .round(2)
+    )
+
+
+    st.dataframe(
+        summary,
+        use_container_width=True
+    )
+
+
+    # ========================================================
+    # FILE NAMES
+    # ========================================================
+
+    csv_filename = (
+
+        f"air_quality_"
+        f"{location_id}_"
+        f"{start_date}_"
+        f"{end_date}.csv"
+
+    )
+
+
+    zip_filename = (
+
+        f"air_quality_"
+        f"{location_id}_"
+        f"{start_date}_"
+        f"{end_date}.zip"
+
+    )
+
+
+    # ========================================================
+    # CREATE CSV
+    # ========================================================
+
+    csv_data = df.to_csv(
+        index=False
+    ).encode(
+        "utf-8"
+    )
+
+
+    # ========================================================
+    # CREATE ZIP
+    # ========================================================
+
+    zip_buffer = BytesIO()
+
+
+    with zipfile.ZipFile(
+
+        zip_buffer,
+        mode="w",
+        compression=zipfile.ZIP_DEFLATED
+
+    ) as zip_file:
+
+        zip_file.writestr(
+            csv_filename,
+            csv_data
+        )
+
+
+    zip_buffer.seek(0)
+
+
+    # ========================================================
+    # DOWNLOAD SECTION
+    # ========================================================
+
+    st.markdown(
+        '<div class="section-title">'
+        '💾 Download Data'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+
+    col_download1, col_download2 = st.columns(2)
+
+
+    # ========================================================
+    # ZIP DOWNLOAD
+    # ========================================================
+
+    with col_download1:
+
+        st.download_button(
+
+            label="📦 Download CSV ZIP File",
+
+            data=zip_buffer.getvalue(),
+
+            file_name=zip_filename,
+
+            mime="application/zip",
+
+            use_container_width=True
+
+        )
+
+
+    # ========================================================
+    # DIRECT CSV DOWNLOAD
+    # ========================================================
+
+    with col_download2:
+
+        st.download_button(
+
+            label="📄 Download CSV",
+
+            data=csv_data,
+
+            file_name=csv_filename,
+
+            mime="text/csv",
+
+            use_container_width=True
+
+        )
+
+
+    # ========================================================
+    # FILE INFORMATION
+    # ========================================================
+
+    st.info(
+        f"ZIP file contains: **{csv_filename}**"
+    )
+
+
+    # ========================================================
+    # CHECK PM RELATIONSHIP
+    # ========================================================
+
+    st.markdown(
+        '<div class="section-title">'
+        '🔍 Data Quality Check'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+
+    pm_relationship = (
+
+        (df["PM1"] <= df["PM2.5"]) &
+        (df["PM2.5"] <= df["PM10"])
+
+    )
+
+
+    valid_relationship = (
+        pm_relationship.sum()
+    )
+
+    total_records = len(df)
+
+
+    col_qc1, col_qc2, col_qc3 = st.columns(3)
+
+
+    with col_qc1:
+
+        st.metric(
+            "Valid PM Relationships",
+            f"{valid_relationship:,}"
+        )
+
+
+    with col_qc2:
+
+        st.metric(
+            "Total Records",
+            f"{total_records:,}"
+        )
+
+
+    with col_qc3:
+
+        percentage = (
+
+            valid_relationship /
+            total_records *
+            100
+
+        )
+
+        st.metric(
+            "Valid (%)",
+            f"{percentage:.1f}%"
+        )
+
+
+    if valid_relationship == total_records:
+
+        st.success(
+            "✓ All records satisfy "
+            "PM1 ≤ PM2.5 ≤ PM10."
+        )
+
+    else:
+
+        st.warning(
+            "Some records do not satisfy "
+            "PM1 ≤ PM2.5 ≤ PM10."
+        )
+
+
+# ============================================================
+# FOOTER
+# ============================================================
+
+st.markdown("---")
+
+st.caption(
+    "Air Quality Automatic Data Generator | "
+    "Hourly synthetic monitoring data"
+)
