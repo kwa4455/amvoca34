@@ -13,7 +13,7 @@ import zipfile
 # ============================================================
 
 st.set_page_config(
-    page_title="Air Quality Automatic Data Generator",
+    page_title="Ghana Air Quality Automatic Data Generator",
     page_icon="🌍",
     layout="wide"
 )
@@ -46,6 +46,13 @@ st.markdown(
         margin-bottom: 10px;
     }
 
+    .season-box {
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        margin-bottom: 15px;
+    }
+
     </style>
     """,
     unsafe_allow_html=True
@@ -58,15 +65,15 @@ st.markdown(
 
 st.markdown(
     '<div class="main-title">'
-    '🌍 Air Quality Automatic Data Generator'
+    '🌍 Ghana Air Quality Automatic Data Generator'
     '</div>',
     unsafe_allow_html=True
 )
 
 st.markdown(
     '<div class="subtitle">'
-    'Generate hourly air-quality monitoring data using '
-    'user-defined locations, dates, coordinates and pollutant ranges.'
+    'Generate hourly synthetic air-quality monitoring data '
+    'using Ghana-specific seasonal patterns.'
     '</div>',
     unsafe_allow_html=True
 )
@@ -95,6 +102,7 @@ location_name = st.sidebar.text_input(
     value="Monitoring Site 1"
 )
 
+
 location_type_option = st.sidebar.selectbox(
     "Location Type",
     [
@@ -109,6 +117,7 @@ location_type_option = st.sidebar.selectbox(
     ]
 )
 
+
 if location_type_option == "Other":
 
     location_type = st.sidebar.text_input(
@@ -122,7 +131,7 @@ else:
 
 
 # ============================================================
-# SENSOR INFORMATION
+# SENSOR
 # ============================================================
 
 st.sidebar.markdown("### 📡 Sensor Information")
@@ -159,6 +168,21 @@ longitude = st.sidebar.number_input(
 
 
 # ============================================================
+# GHANA REGION
+# ============================================================
+
+st.sidebar.markdown("### 🇬🇭 Ghana Seasonal Region")
+
+region = st.sidebar.selectbox(
+    "Select Region",
+    [
+        "Southern Ghana",
+        "Northern Ghana"
+    ]
+)
+
+
+# ============================================================
 # DATE RANGE
 # ============================================================
 
@@ -176,7 +200,7 @@ end_date = st.sidebar.date_input(
 
 
 # ============================================================
-# TIME ZONE
+# TIMEZONE
 # ============================================================
 
 st.sidebar.markdown("### 🕐 Time Zone")
@@ -185,9 +209,6 @@ timezone_name = st.sidebar.selectbox(
     "Local Time Zone",
     [
         "Africa/Accra",
-        "Africa/Lagos",
-        "Africa/Nairobi",
-        "Africa/Johannesburg",
         "UTC"
     ],
     index=0
@@ -212,7 +233,6 @@ place_open_option = st.sidebar.selectbox(
 if place_open_option == "24/7":
 
     opening_time = time(0, 0)
-
     closing_time = time(23, 59)
 
 else:
@@ -229,71 +249,225 @@ else:
 
 
 # ============================================================
-# POLLUTANT RANGES
+# SEASON MODE
+# ============================================================
+
+st.sidebar.markdown("### 🌦️ Season Selection")
+
+season_mode = st.sidebar.selectbox(
+    "How should the season be determined?",
+    [
+        "Automatic based on month",
+        "Harmattan",
+        "Wet Season",
+        "Dry Season",
+        "Custom Season"
+    ]
+)
+
+
+# ============================================================
+# SEASONAL INFORMATION
+# ============================================================
+
+with st.expander(
+    "ℹ️ Ghana seasonal classification",
+    expanded=False
+):
+
+    st.write(
+        """
+        **Southern Ghana**
+
+        - Harmattan: December–February
+        - Major Wet Season: March–July
+        - Little Dry Season: August
+        - Minor Wet Season: September–November
+
+        **Northern Ghana**
+
+        - Harmattan/Dry Season: December–March
+        - Wet Season: April–October
+        """
+    )
+
+
+# ============================================================
+# DEFAULT SEASONAL RANGES
+# ============================================================
+
+# These are simulation defaults.
+#
+# They are NOT official Ghana air-quality standards.
+# Users can change all values.
+
+
+DEFAULT_SEASONS = {
+
+    "Harmattan": {
+
+        "pm1_min": 5.0,
+        "pm1_max": 80.0,
+
+        "pm25_min": 10.0,
+        "pm25_max": 120.0,
+
+        "pm10_min": 20.0,
+        "pm10_max": 250.0,
+
+        "temp_min": 22.0,
+        "temp_max": 35.0,
+
+        "humidity_min": 25.0,
+        "humidity_max": 70.0
+    },
+
+    "Wet Season": {
+
+        "pm1_min": 1.0,
+        "pm1_max": 40.0,
+
+        "pm25_min": 3.0,
+        "pm25_max": 60.0,
+
+        "pm10_min": 5.0,
+        "pm10_max": 120.0,
+
+        "temp_min": 23.0,
+        "temp_max": 32.0,
+
+        "humidity_min": 60.0,
+        "humidity_max": 98.0
+    },
+
+    "Dry Season": {
+
+        "pm1_min": 3.0,
+        "pm1_max": 60.0,
+
+        "pm25_min": 5.0,
+        "pm25_max": 90.0,
+
+        "pm10_min": 10.0,
+        "pm10_max": 180.0,
+
+        "temp_min": 24.0,
+        "temp_max": 36.0,
+
+        "humidity_min": 35.0,
+        "humidity_max": 80.0
+    }
+
+}
+
+
+# ============================================================
+# CUSTOM SEASON
+# ============================================================
+
+custom_season_name = "Custom"
+
+if season_mode == "Custom Season":
+
+    st.sidebar.markdown("### ✏️ Custom Season")
+
+    custom_season_name = st.sidebar.text_input(
+        "Season Name",
+        value="Custom Season"
+    )
+
+
+# ============================================================
+# SEASONAL RANGE INPUT
 # ============================================================
 
 st.sidebar.markdown("### 🧪 Pollutant Ranges")
 
-
-# ------------------------------------------------------------
-# PM2.5
-# ------------------------------------------------------------
-
-st.sidebar.write("**PM2.5**")
-
-pm25_min = st.sidebar.number_input(
-    "PM2.5 Minimum",
-    min_value=0.0,
-    value=5.0,
-    step=0.1
-)
-
-pm25_max = st.sidebar.number_input(
-    "PM2.5 Maximum",
-    min_value=0.0,
-    value=80.0,
-    step=0.1
+st.sidebar.caption(
+    "Ranges are used to generate synthetic hourly observations."
 )
 
 
-# ------------------------------------------------------------
+# ============================================================
+# DEFAULT VALUES FOR RANGE CONTROLS
+# ============================================================
+
+if season_mode == "Harmattan":
+
+    default = DEFAULT_SEASONS["Harmattan"]
+
+elif season_mode == "Wet Season":
+
+    default = DEFAULT_SEASONS["Wet Season"]
+
+elif season_mode == "Dry Season":
+
+    default = DEFAULT_SEASONS["Dry Season"]
+
+else:
+
+    default = DEFAULT_SEASONS["Wet Season"]
+
+
+# ============================================================
 # PM1
-# ------------------------------------------------------------
+# ============================================================
 
 st.sidebar.write("**PM1**")
 
 pm1_min = st.sidebar.number_input(
     "PM1 Minimum",
     min_value=0.0,
-    value=2.0,
+    value=float(default["pm1_min"]),
     step=0.1
 )
 
 pm1_max = st.sidebar.number_input(
     "PM1 Maximum",
     min_value=0.0,
-    value=50.0,
+    value=float(default["pm1_max"]),
     step=0.1
 )
 
 
-# ------------------------------------------------------------
+# ============================================================
+# PM2.5
+# ============================================================
+
+st.sidebar.write("**PM2.5**")
+
+pm25_min = st.sidebar.number_input(
+    "PM2.5 Minimum",
+    min_value=0.0,
+    value=float(default["pm25_min"]),
+    step=0.1
+)
+
+pm25_max = st.sidebar.number_input(
+    "PM2.5 Maximum",
+    min_value=0.0,
+    value=float(default["pm25_max"]),
+    step=0.1
+)
+
+
+# ============================================================
 # PM10
-# ------------------------------------------------------------
+# ============================================================
 
 st.sidebar.write("**PM10**")
 
 pm10_min = st.sidebar.number_input(
     "PM10 Minimum",
     min_value=0.0,
-    value=10.0,
+    value=float(default["pm10_min"]),
     step=0.1
 )
 
 pm10_max = st.sidebar.number_input(
     "PM10 Maximum",
     min_value=0.0,
-    value=150.0,
+    value=float(default["pm10_max"]),
     step=0.1
 )
 
@@ -306,13 +480,13 @@ st.sidebar.markdown("### 🌡️ Temperature")
 
 temperature_min = st.sidebar.number_input(
     "Temperature Minimum (°C)",
-    value=20.0,
+    value=float(default["temp_min"]),
     step=0.1
 )
 
 temperature_max = st.sidebar.number_input(
     "Temperature Maximum (°C)",
-    value=35.0,
+    value=float(default["temp_max"]),
     step=0.1
 )
 
@@ -327,7 +501,7 @@ humidity_min = st.sidebar.number_input(
     "Humidity Minimum (%)",
     min_value=0.0,
     max_value=100.0,
-    value=40.0,
+    value=float(default["humidity_min"]),
     step=0.1
 )
 
@@ -335,7 +509,7 @@ humidity_max = st.sidebar.number_input(
     "Humidity Maximum (%)",
     min_value=0.0,
     max_value=100.0,
-    value=90.0,
+    value=float(default["humidity_max"]),
     step=0.1
 )
 
@@ -355,7 +529,83 @@ random_seed = st.sidebar.number_input(
 
 
 # ============================================================
-# GENERATE FUNCTION
+# SEASON FUNCTION
+# ============================================================
+
+def determine_season(
+    current_month,
+    selected_mode,
+    selected_region
+):
+
+    # --------------------------------------------------------
+    # USER FORCED SEASON
+    # --------------------------------------------------------
+
+    if selected_mode == "Harmattan":
+
+        return "Harmattan"
+
+    if selected_mode == "Wet Season":
+
+        return "Wet Season"
+
+    if selected_mode == "Dry Season":
+
+        return "Dry Season"
+
+    if selected_mode == "Custom Season":
+
+        return custom_season_name
+
+
+    # --------------------------------------------------------
+    # AUTOMATIC SOUTHERN GHANA
+    # --------------------------------------------------------
+
+    if selected_region == "Southern Ghana":
+
+        if current_month in [12, 1, 2]:
+
+            return "Harmattan"
+
+        elif current_month in [3, 4, 5, 6, 7]:
+
+            return "Wet Season"
+
+        elif current_month == 8:
+
+            return "Dry Season"
+
+        elif current_month in [9, 10, 11]:
+
+            return "Wet Season"
+
+
+    # --------------------------------------------------------
+    # AUTOMATIC NORTHERN GHANA
+    # --------------------------------------------------------
+
+    if selected_region == "Northern Ghana":
+
+        if current_month in [12, 1, 2, 3]:
+
+            return "Harmattan"
+
+        elif current_month in [4, 5, 6, 7, 8, 9, 10]:
+
+            return "Wet Season"
+
+        elif current_month == 11:
+
+            return "Dry Season"
+
+
+    return "Dry Season"
+
+
+# ============================================================
+# GENERATE DATA FUNCTION
 # ============================================================
 
 def generate_data():
@@ -363,6 +613,7 @@ def generate_data():
     rng = np.random.default_rng(
         int(random_seed)
     )
+
 
     # --------------------------------------------------------
     # TIMEZONE
@@ -372,8 +623,9 @@ def generate_data():
         timezone_name
     )
 
+
     # --------------------------------------------------------
-    # START AND END DATETIME
+    # DATE RANGE
     # --------------------------------------------------------
 
     start_datetime = datetime.combine(
@@ -386,6 +638,7 @@ def generate_data():
         time(23, 0)
     )
 
+
     # --------------------------------------------------------
     # HOURLY TIMESTAMPS
     # --------------------------------------------------------
@@ -396,11 +649,12 @@ def generate_data():
         freq="h"
     )
 
+
     records = []
 
 
     # ========================================================
-    # GENERATE EACH HOUR
+    # LOOP THROUGH EVERY HOUR
     # ========================================================
 
     for ts in timestamps:
@@ -409,15 +663,27 @@ def generate_data():
 
         current_hour = ts.hour
 
+
+        # ----------------------------------------------------
+        # DETERMINE SEASON
+        # ----------------------------------------------------
+
+        season = determine_season(
+            current_date.month,
+            season_mode,
+            region
+        )
+
+
+        # ----------------------------------------------------
+        # PLACE OPEN
+        # ----------------------------------------------------
+
         current_time = time(
             current_hour,
             0
         )
 
-
-        # ----------------------------------------------------
-        # DETERMINE WHETHER PLACE IS OPEN
-        # ----------------------------------------------------
 
         if place_open_option == "24/7":
 
@@ -435,8 +701,6 @@ def generate_data():
 
             else:
 
-                # Opening period crosses midnight
-
                 is_open = (
                     current_time >= opening_time
                     or
@@ -451,7 +715,7 @@ def generate_data():
 
 
         # ----------------------------------------------------
-        # LOCAL DATETIME
+        # LOCAL TIME
         # ----------------------------------------------------
 
         local_dt = datetime(
@@ -466,7 +730,7 @@ def generate_data():
 
 
         # ----------------------------------------------------
-        # UTC DATETIME
+        # UTC TIME
         # ----------------------------------------------------
 
         utc_dt = local_dt.astimezone(
@@ -475,21 +739,19 @@ def generate_data():
 
 
         # ====================================================
-        # GENERATE PM DATA
+        # PARTICULATE MATTER
         # ====================================================
 
-        # Generate PM1 first
-
+        # PM1
         pm1 = rng.uniform(
             pm1_min,
             pm1_max
         )
 
 
-        # Generate PM2.5 ensuring:
-        #
-        # PM2.5 >= PM1
-        #
+        # ----------------------------------------------------
+        # PM2.5
+        # ----------------------------------------------------
 
         pm25_lower = max(
             pm25_min,
@@ -512,9 +774,7 @@ def generate_data():
 
 
         # ----------------------------------------------------
-        # Generate PM10 ensuring:
-        #
-        # PM10 >= PM2.5
+        # PM10
         # ----------------------------------------------------
 
         pm10_lower = max(
@@ -538,13 +798,14 @@ def generate_data():
 
 
         # ====================================================
-        # METEOROLOGICAL DATA
+        # METEOROLOGICAL VARIABLES
         # ====================================================
 
         temperature = rng.uniform(
             temperature_min,
             temperature_max
         )
+
 
         humidity = rng.uniform(
             humidity_min,
@@ -602,7 +863,11 @@ def generate_data():
                 round(latitude, 6),
 
             "longitude":
-                round(longitude, 6)
+                round(longitude, 6),
+
+            "Season":
+                season
+
         }
 
 
@@ -612,7 +877,7 @@ def generate_data():
 
 
     # ========================================================
-    # CREATE DATAFRAME
+    # DATAFRAME
     # ========================================================
 
     df = pd.DataFrame(
@@ -621,7 +886,7 @@ def generate_data():
 
 
     # ========================================================
-    # FORCE COLUMN ORDER
+    # COLUMN ORDER
     # ========================================================
 
     columns = [
@@ -639,9 +904,11 @@ def generate_data():
         "PM1",
         "PM10",
         "latitude",
-        "longitude"
+        "longitude",
+        "Season"
 
     ]
+
 
     df = df[
         columns
@@ -693,24 +960,24 @@ if end_date < start_date:
     )
 
 
-if pm25_max < pm25_min:
-
-    errors.append(
-        "PM2.5 maximum must be greater than or equal to minimum."
-    )
-
-
 if pm1_max < pm1_min:
 
     errors.append(
-        "PM1 maximum must be greater than or equal to minimum."
+        "PM1 maximum must be greater than or equal to PM1 minimum."
+    )
+
+
+if pm25_max < pm25_min:
+
+    errors.append(
+        "PM2.5 maximum must be greater than or equal to PM2.5 minimum."
     )
 
 
 if pm10_max < pm10_min:
 
     errors.append(
-        "PM10 maximum must be greater than or equal to minimum."
+        "PM10 maximum must be greater than or equal to PM10 minimum."
     )
 
 
@@ -725,6 +992,26 @@ if humidity_max < humidity_min:
 
     errors.append(
         "Humidity maximum must be greater than or equal to minimum."
+    )
+
+
+# ============================================================
+# CHECK PM RANGE COMPATIBILITY
+# ============================================================
+
+if pm1_max > pm25_max:
+
+    errors.append(
+        "PM1 maximum cannot be greater than PM2.5 maximum "
+        "when enforcing PM1 ≤ PM2.5 ≤ PM10."
+    )
+
+
+if pm25_max > pm10_max:
+
+    errors.append(
+        "PM2.5 maximum cannot be greater than PM10 maximum "
+        "when enforcing PM1 ≤ PM2.5 ≤ PM10."
     )
 
 
@@ -744,9 +1031,7 @@ if errors:
 
     for error in errors:
 
-        st.error(
-            error
-        )
+        st.error(error)
 
 else:
 
@@ -777,7 +1062,7 @@ else:
 
 
 # ============================================================
-# DISPLAY GENERATED DATA
+# DISPLAY DATA
 # ============================================================
 
 if "generated_data" in st.session_state:
@@ -788,7 +1073,7 @@ if "generated_data" in st.session_state:
 
 
     # ========================================================
-    # SUMMARY
+    # SUMMARY METRICS
     # ========================================================
 
     st.markdown(
@@ -843,6 +1128,44 @@ if "generated_data" in st.session_state:
 
 
     # ========================================================
+    # SEASON SUMMARY
+    # ========================================================
+
+    st.markdown(
+        '<div class="section-title">'
+        '🌦️ Season Summary'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+
+    season_summary = (
+        df["Season"]
+        .value_counts()
+        .rename_axis("Season")
+        .reset_index(
+            name="Hourly Records"
+        )
+    )
+
+
+    season_summary["Percentage"] = (
+        season_summary["Hourly Records"]
+        /
+        len(df)
+        *
+        100
+    ).round(2)
+
+
+    st.dataframe(
+        season_summary,
+        use_container_width=True,
+        hide_index=True
+    )
+
+
+    # ========================================================
     # DATA PREVIEW
     # ========================================================
 
@@ -867,7 +1190,7 @@ if "generated_data" in st.session_state:
 
     st.markdown(
         '<div class="section-title">'
-        '📈 Pollutant Summary'
+        '📈 Overall Summary Statistics'
         '</div>',
         unsafe_allow_html=True
     )
@@ -901,32 +1224,61 @@ if "generated_data" in st.session_state:
 
 
     # ========================================================
-    # FILE NAMES
+    # SEASONAL SUMMARY
     # ========================================================
 
-    csv_filename = (
-
-        f"air_quality_"
-        f"{location_id}_"
-        f"{start_date}_"
-        f"{end_date}.csv"
-
+    st.markdown(
+        '<div class="section-title">'
+        '🌦️ Pollutant Summary by Season'
+        '</div>',
+        unsafe_allow_html=True
     )
 
 
-    zip_filename = (
+    seasonal_summary = (
+        df.groupby("Season")[
+            [
+                "PM1",
+                "PM2.5",
+                "PM10",
+                "Temperature (C)",
+                "Humidity (%)"
+            ]
+        ]
+        .agg(
+            [
+                "count",
+                "mean",
+                "median",
+                "min",
+                "max"
+            ]
+        )
+        .round(2)
+    )
 
-        f"air_quality_"
-        f"{location_id}_"
-        f"{start_date}_"
-        f"{end_date}.zip"
 
+    st.dataframe(
+        seasonal_summary,
+        use_container_width=True
     )
 
 
     # ========================================================
-    # CREATE CSV
+    # DOWNLOAD FILES
     # ========================================================
+
+    st.markdown(
+        '<div class="section-title">'
+        '💾 Download Data'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+
+    # --------------------------------------------------------
+    # CSV FILE
+    # --------------------------------------------------------
 
     csv_data = df.to_csv(
         index=False
@@ -935,9 +1287,17 @@ if "generated_data" in st.session_state:
     )
 
 
-    # ========================================================
-    # CREATE ZIP
-    # ========================================================
+    csv_filename = (
+        f"air_quality_"
+        f"{location_id}_"
+        f"{start_date}_"
+        f"{end_date}.csv"
+    )
+
+
+    # --------------------------------------------------------
+    # ZIP FILE
+    # --------------------------------------------------------
 
     zip_buffer = BytesIO()
 
@@ -959,26 +1319,22 @@ if "generated_data" in st.session_state:
     zip_buffer.seek(0)
 
 
-    # ========================================================
-    # DOWNLOAD SECTION
-    # ========================================================
-
-    st.markdown(
-        '<div class="section-title">'
-        '💾 Download Data'
-        '</div>',
-        unsafe_allow_html=True
+    zip_filename = (
+        f"air_quality_"
+        f"{location_id}_"
+        f"{start_date}_"
+        f"{end_date}.zip"
     )
 
 
-    col_download1, col_download2 = st.columns(2)
+    # --------------------------------------------------------
+    # DOWNLOAD BUTTONS
+    # --------------------------------------------------------
+
+    download_col1, download_col2 = st.columns(2)
 
 
-    # ========================================================
-    # ZIP DOWNLOAD
-    # ========================================================
-
-    with col_download1:
+    with download_col1:
 
         st.download_button(
 
@@ -995,11 +1351,7 @@ if "generated_data" in st.session_state:
         )
 
 
-    # ========================================================
-    # DIRECT CSV DOWNLOAD
-    # ========================================================
-
-    with col_download2:
+    with download_col2:
 
         st.download_button(
 
@@ -1016,17 +1368,13 @@ if "generated_data" in st.session_state:
         )
 
 
-    # ========================================================
-    # FILE INFORMATION
-    # ========================================================
-
     st.info(
-        f"ZIP file contains: **{csv_filename}**"
+        f"The ZIP file contains: **{csv_filename}**"
     )
 
 
     # ========================================================
-    # CHECK PM RELATIONSHIP
+    # DATA QUALITY CHECK
     # ========================================================
 
     st.markdown(
@@ -1037,6 +1385,10 @@ if "generated_data" in st.session_state:
     )
 
 
+    # --------------------------------------------------------
+    # PM RELATIONSHIP
+    # --------------------------------------------------------
+
     pm_relationship = (
 
         (df["PM1"] <= df["PM2.5"]) &
@@ -1045,25 +1397,33 @@ if "generated_data" in st.session_state:
     )
 
 
-    valid_relationship = (
+    valid_relationship = int(
         pm_relationship.sum()
     )
+
 
     total_records = len(df)
 
 
-    col_qc1, col_qc2, col_qc3 = st.columns(3)
+    percentage = (
+        valid_relationship /
+        total_records *
+        100
+    )
 
 
-    with col_qc1:
+    qc1, qc2, qc3 = st.columns(3)
+
+
+    with qc1:
 
         st.metric(
-            "Valid PM Relationships",
+            "Valid PM Records",
             f"{valid_relationship:,}"
         )
 
 
-    with col_qc2:
+    with qc2:
 
         st.metric(
             "Total Records",
@@ -1071,18 +1431,10 @@ if "generated_data" in st.session_state:
         )
 
 
-    with col_qc3:
-
-        percentage = (
-
-            valid_relationship /
-            total_records *
-            100
-
-        )
+    with qc3:
 
         st.metric(
-            "Valid (%)",
+            "Valid PM (%)",
             f"{percentage:.1f}%"
         )
 
@@ -1102,6 +1454,132 @@ if "generated_data" in st.session_state:
         )
 
 
+    # ========================================================
+    # DATE/TIME CHECK
+    # ========================================================
+
+    st.markdown(
+        '<div class="section-title">'
+        '🕐 Date and Time Check'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+
+    local_times = pd.to_datetime(
+        df["Local Date/Time"]
+    )
+
+    utc_times = pd.to_datetime(
+        df["UTC Date/Time"]
+    )
+
+
+    expected_records = (
+        int(
+            (
+                pd.Timestamp(end_date)
+                -
+                pd.Timestamp(start_date)
+            ).total_seconds()
+            /
+            3600
+        )
+        + 24
+    )
+
+
+    time_col1, time_col2, time_col3 = st.columns(3)
+
+
+    with time_col1:
+
+        st.metric(
+            "Expected Hourly Records",
+            f"{expected_records:,}"
+        )
+
+
+    with time_col2:
+
+        st.metric(
+            "Generated Records",
+            f"{len(df):,}"
+        )
+
+
+    with time_col3:
+
+        st.metric(
+            "Frequency",
+            "Hourly"
+        )
+
+
+    # ========================================================
+    # DATASET INFORMATION
+    # ========================================================
+
+    with st.expander(
+        "📋 Dataset Configuration"
+    ):
+
+        config = pd.DataFrame({
+
+            "Parameter": [
+
+                "Location ID",
+                "Location Name",
+                "Location Type",
+                "Sensor ID",
+                "Region",
+                "Season Mode",
+                "Start Date",
+                "End Date",
+                "Latitude",
+                "Longitude",
+                "Time Zone",
+                "Opening Schedule",
+                "PM1 Range",
+                "PM2.5 Range",
+                "PM10 Range",
+                "Temperature Range",
+                "Humidity Range"
+
+            ],
+
+            "Value": [
+
+                location_id,
+                location_name,
+                location_type,
+                sensor_id,
+                region,
+                season_mode,
+                str(start_date),
+                str(end_date),
+                f"{latitude:.6f}",
+                f"{longitude:.6f}",
+                timezone_name,
+                place_open_option,
+                f"{pm1_min} – {pm1_max}",
+                f"{pm25_min} – {pm25_max}",
+                f"{pm10_min} – {pm10_max}",
+                f"{temperature_min} – {temperature_max} °C",
+                f"{humidity_min} – {humidity_max} %"
+
+            ]
+
+        })
+
+
+        st.dataframe(
+            config,
+            use_container_width=True,
+            hide_index=True
+        )
+
+
 # ============================================================
 # FOOTER
 # ============================================================
@@ -1109,6 +1587,6 @@ if "generated_data" in st.session_state:
 st.markdown("---")
 
 st.caption(
-    "Air Quality Automatic Data Generator | "
+    "Ghana Air Quality Automatic Data Generator | "
     "Hourly synthetic monitoring data"
 )
