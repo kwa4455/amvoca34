@@ -73,7 +73,7 @@ st.markdown(
 
 
 # ============================================================
-# GHANA REGION / CITY DATABASE
+# GHANA REGIONS AND CITIES
 # ============================================================
 
 ghana_regions = {
@@ -198,7 +198,6 @@ ghana_regions = {
         "Techiman",
         "Berekum"
     ]
-
 }
 
 
@@ -210,11 +209,10 @@ st.sidebar.header("⚙️ Generator Settings")
 
 
 # ============================================================
-# LOCATION
+# LOCATION INFORMATION
 # ============================================================
 
-st.sidebar.markdown("### 📍 Location")
-
+st.sidebar.markdown("### 📍 Location Information")
 
 region = st.sidebar.selectbox(
     "Region",
@@ -264,11 +262,22 @@ if location_type == "Other":
 
 
 # ============================================================
-# SENSOR TYPE
+# PROVIDER INFORMATION
 # ============================================================
 
-st.sidebar.markdown("### 📡 Sensor")
+st.sidebar.markdown("### 🏢 Provider Information")
 
+provider_name = st.sidebar.text_input(
+    "Provider Name",
+    value="EPA Ghana"
+)
+
+
+# ============================================================
+# SENSOR INFORMATION
+# ============================================================
+
+st.sidebar.markdown("### 📡 Sensor Information")
 
 sensor_type = st.sidebar.selectbox(
     "Sensor Type",
@@ -357,7 +366,7 @@ timezone_name = st.sidebar.selectbox(
 
 
 # ============================================================
-# OPENING HOURS
+# PLACE OPENING HOURS
 # ============================================================
 
 st.sidebar.markdown("### 🏢 Place Opening Hours")
@@ -390,7 +399,7 @@ else:
 
 
 # ============================================================
-# SEASON
+# SEASON MODE
 # ============================================================
 
 st.sidebar.markdown("### 🌦️ Season")
@@ -420,7 +429,7 @@ else:
 
 
 # ============================================================
-# DEFAULT SEASONAL RANGES
+# GHANA SEASONAL DEFAULTS
 # ============================================================
 
 DEFAULT_SEASONS = {
@@ -478,12 +487,11 @@ DEFAULT_SEASONS = {
         "humidity_min": 35.0,
         "humidity_max": 80.0
     }
-
 }
 
 
 # ============================================================
-# SELECT DEFAULT RANGE
+# SELECT DEFAULT SEASONAL VALUES
 # ============================================================
 
 if season_mode == "Harmattan":
@@ -509,8 +517,14 @@ else:
 
 st.sidebar.markdown("### 🧪 Pollutant Ranges")
 
+st.sidebar.caption(
+    "These ranges are for synthetic-data generation."
+)
 
+
+# ------------------------------------------------------------
 # PM1
+# ------------------------------------------------------------
 
 pm1_min = st.sidebar.number_input(
     "PM1 Minimum",
@@ -518,6 +532,7 @@ pm1_min = st.sidebar.number_input(
     value=float(default["pm1_min"]),
     step=0.1
 )
+
 
 pm1_max = st.sidebar.number_input(
     "PM1 Maximum",
@@ -527,7 +542,9 @@ pm1_max = st.sidebar.number_input(
 )
 
 
+# ------------------------------------------------------------
 # PM2.5
+# ------------------------------------------------------------
 
 pm25_min = st.sidebar.number_input(
     "PM2.5 Minimum",
@@ -535,6 +552,7 @@ pm25_min = st.sidebar.number_input(
     value=float(default["pm25_min"]),
     step=0.1
 )
+
 
 pm25_max = st.sidebar.number_input(
     "PM2.5 Maximum",
@@ -544,7 +562,9 @@ pm25_max = st.sidebar.number_input(
 )
 
 
+# ------------------------------------------------------------
 # PM10
+# ------------------------------------------------------------
 
 pm10_min = st.sidebar.number_input(
     "PM10 Minimum",
@@ -552,6 +572,7 @@ pm10_min = st.sidebar.number_input(
     value=float(default["pm10_min"]),
     step=0.1
 )
+
 
 pm10_max = st.sidebar.number_input(
     "PM10 Maximum",
@@ -565,7 +586,9 @@ pm10_max = st.sidebar.number_input(
 # METEOROLOGY
 # ============================================================
 
-st.sidebar.markdown("### 🌡️ Meteorological Variables")
+st.sidebar.markdown(
+    "### 🌡️ Meteorological Variables"
+)
 
 
 temperature_min = st.sidebar.number_input(
@@ -573,6 +596,7 @@ temperature_min = st.sidebar.number_input(
     value=float(default["temp_min"]),
     step=0.1
 )
+
 
 temperature_max = st.sidebar.number_input(
     "Temperature Maximum (°C)",
@@ -589,6 +613,7 @@ humidity_min = st.sidebar.number_input(
     step=0.1
 )
 
+
 humidity_max = st.sidebar.number_input(
     "Humidity Maximum (%)",
     min_value=0.0,
@@ -601,6 +626,8 @@ humidity_max = st.sidebar.number_input(
 # ============================================================
 # RANDOM SEED
 # ============================================================
+
+st.sidebar.markdown("### 🎲 Randomization")
 
 random_seed = st.sidebar.number_input(
     "Random Seed",
@@ -616,63 +643,102 @@ random_seed = st.sidebar.number_input(
 
 def determine_season(month):
 
+    # --------------------------------------------------------
+    # MANUAL SEASON
+    # --------------------------------------------------------
+
     if season_mode == "Harmattan":
+
         return "Harmattan"
 
     if season_mode == "Wet Season":
+
         return "Wet Season"
 
     if season_mode == "Dry Season":
+
         return "Dry Season"
 
     if season_mode == "Custom Season":
+
         return custom_season_name
 
-    # Automatic Southern Ghana
-    if region in [
+
+    # --------------------------------------------------------
+    # SOUTHERN GHANA
+    # --------------------------------------------------------
+
+    southern_regions = [
+
         "Greater Accra",
-        "Central",
+        "Ashanti",
         "Western",
         "Western North",
+        "Central",
         "Eastern",
         "Volta",
         "Oti",
-        "Ashanti",
         "Bono",
         "Bono East",
         "Ahafo",
         "Brong Ahafo"
-    ]:
 
+    ]
+
+
+    if region in southern_regions:
+
+        # Harmattan
         if month in [12, 1, 2]:
+
             return "Harmattan"
 
+        # Major wet season
         elif month in [3, 4, 5, 6, 7]:
+
             return "Wet Season"
 
+        # Little dry season
         elif month == 8:
+
             return "Dry Season"
 
+        # Minor wet season
         elif month in [9, 10, 11]:
+
             return "Wet Season"
 
-    # Automatic Northern Ghana
+
+    # --------------------------------------------------------
+    # NORTHERN GHANA
+    # --------------------------------------------------------
+
     else:
 
+        # Harmattan / dry
         if month in [12, 1, 2, 3]:
+
             return "Harmattan"
 
-        elif month in [4, 5, 6, 7, 8, 9, 10]:
+        # Wet season
+        elif month in [
+            4, 5, 6, 7,
+            8, 9, 10
+        ]:
+
             return "Wet Season"
 
+        # Transition
         elif month == 11:
+
             return "Dry Season"
+
 
     return "Dry Season"
 
 
 # ============================================================
-# GENERATE DATA
+# GENERATE HOURLY DATA
 # ============================================================
 
 def generate_data():
@@ -681,19 +747,23 @@ def generate_data():
         int(random_seed)
     )
 
+
     tz = ZoneInfo(
         timezone_name
     )
+
 
     start_datetime = datetime.combine(
         start_date,
         time(0, 0)
     )
 
+
     end_datetime = datetime.combine(
         end_date,
         time(23, 0)
     )
+
 
     timestamps = pd.date_range(
         start=start_datetime,
@@ -701,12 +771,20 @@ def generate_data():
         freq="h"
     )
 
+
     records = []
+
+
+    # ========================================================
+    # LOOP THROUGH HOURLY TIMESTAMPS
+    # ========================================================
 
     for ts in timestamps:
 
         current_date = ts.date()
+
         current_hour = ts.hour
+
 
         # ----------------------------------------------------
         # SEASON
@@ -716,6 +794,7 @@ def generate_data():
             current_date.month
         )
 
+
         # ----------------------------------------------------
         # PLACE OPEN
         # ----------------------------------------------------
@@ -724,6 +803,7 @@ def generate_data():
             current_hour,
             0
         )
+
 
         if place_open_option == "24/7":
 
@@ -747,14 +827,16 @@ def generate_data():
                     current_time <= closing_time
                 )
 
+
             place_open = (
                 "Yes"
                 if is_open
                 else "No"
             )
 
+
         # ----------------------------------------------------
-        # LOCAL TIME
+        # LOCAL DATETIME
         # ----------------------------------------------------
 
         local_dt = datetime(
@@ -767,31 +849,35 @@ def generate_data():
             tzinfo=tz
         )
 
+
         # ----------------------------------------------------
-        # UTC TIME
+        # UTC DATETIME
         # ----------------------------------------------------
 
         utc_dt = local_dt.astimezone(
             ZoneInfo("UTC")
         )
 
-        # ----------------------------------------------------
+
+        # ====================================================
         # PM1
-        # ----------------------------------------------------
+        # ====================================================
 
         pm1 = rng.uniform(
             pm1_min,
             pm1_max
         )
 
-        # ----------------------------------------------------
+
+        # ====================================================
         # PM2.5
-        # ----------------------------------------------------
+        # ====================================================
 
         pm25_lower = max(
             pm25_min,
             pm1
         )
+
 
         if pm25_lower <= pm25_max:
 
@@ -804,14 +890,16 @@ def generate_data():
 
             pm25 = pm25_max
 
-        # ----------------------------------------------------
+
+        # ====================================================
         # PM10
-        # ----------------------------------------------------
+        # ====================================================
 
         pm10_lower = max(
             pm10_min,
             pm25
         )
+
 
         if pm10_lower <= pm10_max:
 
@@ -824,23 +912,30 @@ def generate_data():
 
             pm10 = pm10_max
 
-        # ----------------------------------------------------
-        # METEOROLOGY
-        # ----------------------------------------------------
+
+        # ====================================================
+        # TEMPERATURE
+        # ====================================================
 
         temperature = rng.uniform(
             temperature_min,
             temperature_max
         )
 
+
+        # ====================================================
+        # HUMIDITY
+        # ====================================================
+
         humidity = rng.uniform(
             humidity_min,
             humidity_max
         )
 
-        # ----------------------------------------------------
+
+        # ====================================================
         # RECORD
-        # ----------------------------------------------------
+        # ====================================================
 
         records.append({
 
@@ -858,6 +953,9 @@ def generate_data():
 
             "Location Type":
                 location_type,
+
+            "Provider Name":
+                provider_name,
 
             "Sensor ID":
                 sensor_id,
@@ -904,131 +1002,174 @@ def generate_data():
 
         })
 
-    df = pd.DataFrame(
+
+    return pd.DataFrame(
         records
     )
 
-    return df
-
 
 # ============================================================
-# AGGREGATION FUNCTIONS
+# DAILY AVERAGES
 # ============================================================
 
 def calculate_daily_average(df):
 
     data = df.copy()
 
+
     data["Local Date/Time"] = pd.to_datetime(
         data["Local Date/Time"]
     )
+
 
     data["Date"] = (
         data["Local Date/Time"]
         .dt.date
     )
 
+
     pollutant_columns = [
+
         "PM1",
         "PM2.5",
         "PM10",
         "Temperature (C)",
         "Humidity (%)"
+
     ]
 
+
+    group_columns = [
+
+        "Location ID",
+        "Location Name",
+        "Region",
+        "City",
+        "Location Type",
+        "Provider Name",
+        "Sensor ID",
+        "Sensor Type",
+        "Date",
+        "Season",
+        "latitude",
+        "longitude"
+
+    ]
+
+
     averages = (
+
         data.groupby(
-            [
-                "Location ID",
-                "Location Name",
-                "Region",
-                "City",
-                "Location Type",
-                "Sensor ID",
-                "Sensor Type",
-                "Date",
-                "Season",
-                "latitude",
-                "longitude"
-            ],
+            group_columns,
             as_index=False
         )[pollutant_columns]
+
         .mean()
+
     )
 
-    averages = averages.rename(
-        columns={
-            "PM1": "PM1",
-            "PM2.5": "PM2.5",
-            "PM10": "PM10",
-            "Temperature (C)": "Temperature (C)",
-            "Humidity (%)": "Humidity (%)"
-        }
+
+    averages = averages.round({
+        "PM1": 2,
+        "PM2.5": 2,
+        "PM10": 2,
+        "Temperature (C)": 2,
+        "Humidity (%)": 2
+    })
+
+
+    averages["Date"] = (
+        averages["Date"]
+        .astype(str)
     )
 
-    averages["Date"] = averages[
-        "Date"
-    ].astype(str)
 
     return averages
 
 
 # ============================================================
-# MONTHLY AVERAGE
+# MONTHLY AVERAGES
 # ============================================================
 
 def calculate_monthly_average(df):
 
     data = df.copy()
 
+
     data["Local Date/Time"] = pd.to_datetime(
         data["Local Date/Time"]
     )
+
 
     data["Year"] = (
         data["Local Date/Time"]
         .dt.year
     )
 
+
     data["Month"] = (
         data["Local Date/Time"]
         .dt.month
     )
+
 
     data["Month Name"] = (
         data["Local Date/Time"]
         .dt.strftime("%B")
     )
 
+
     pollutant_columns = [
+
         "PM1",
         "PM2.5",
         "PM10",
         "Temperature (C)",
         "Humidity (%)"
+
     ]
 
+
+    group_columns = [
+
+        "Location ID",
+        "Location Name",
+        "Region",
+        "City",
+        "Location Type",
+        "Provider Name",
+        "Sensor ID",
+        "Sensor Type",
+        "Year",
+        "Month",
+        "Month Name",
+        "Season",
+        "latitude",
+        "longitude"
+
+    ]
+
+
     averages = (
+
         data.groupby(
-            [
-                "Location ID",
-                "Location Name",
-                "Region",
-                "City",
-                "Location Type",
-                "Sensor ID",
-                "Sensor Type",
-                "Year",
-                "Month",
-                "Month Name",
-                "Season",
-                "latitude",
-                "longitude"
-            ],
+            group_columns,
             as_index=False
         )[pollutant_columns]
+
         .mean()
+
     )
+
+
+    averages = averages.round({
+        "PM1": 2,
+        "PM2.5": 2,
+        "PM10": 2,
+        "Temperature (C)": 2,
+        "Humidity (%)": 2
+    })
+
 
     return averages
 
@@ -1039,56 +1180,103 @@ def calculate_monthly_average(df):
 
 errors = []
 
+
 if not str(location_id).strip():
-    errors.append("Location ID cannot be empty.")
+
+    errors.append(
+        "Location ID cannot be empty."
+    )
+
 
 if not str(location_name).strip():
-    errors.append("Location Name cannot be empty.")
+
+    errors.append(
+        "Location Name cannot be empty."
+    )
+
+
+if not str(provider_name).strip():
+
+    errors.append(
+        "Provider Name cannot be empty."
+    )
+
 
 if not str(sensor_id).strip():
-    errors.append("Sensor ID cannot be empty.")
+
+    errors.append(
+        "Sensor ID cannot be empty."
+    )
+
 
 if not str(sensor_type).strip():
-    errors.append("Sensor Type cannot be empty.")
+
+    errors.append(
+        "Sensor Type cannot be empty."
+    )
+
 
 if end_date < start_date:
+
     errors.append(
-        "End Date must be greater than or equal to Start Date."
+        "End Date must be greater than "
+        "or equal to Start Date."
     )
+
 
 if pm1_max < pm1_min:
+
     errors.append(
-        "PM1 maximum must be greater than or equal to minimum."
+        "PM1 maximum must be greater than "
+        "or equal to minimum."
     )
+
 
 if pm25_max < pm25_min:
+
     errors.append(
-        "PM2.5 maximum must be greater than or equal to minimum."
+        "PM2.5 maximum must be greater than "
+        "or equal to minimum."
     )
+
 
 if pm10_max < pm10_min:
+
     errors.append(
-        "PM10 maximum must be greater than or equal to minimum."
+        "PM10 maximum must be greater than "
+        "or equal to minimum."
     )
+
 
 if pm1_max > pm25_max:
+
     errors.append(
-        "PM1 maximum should not exceed PM2.5 maximum."
+        "PM1 maximum should not exceed "
+        "PM2.5 maximum."
     )
+
 
 if pm25_max > pm10_max:
+
     errors.append(
-        "PM2.5 maximum should not exceed PM10 maximum."
+        "PM2.5 maximum should not exceed "
+        "PM10 maximum."
     )
+
 
 if temperature_max < temperature_min:
+
     errors.append(
-        "Temperature maximum must be greater than minimum."
+        "Temperature maximum must be greater "
+        "than minimum."
     )
 
+
 if humidity_max < humidity_min:
+
     errors.append(
-        "Humidity maximum must be greater than minimum."
+        "Humidity maximum must be greater "
+        "than minimum."
     )
 
 
@@ -1103,9 +1291,11 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+
 if errors:
 
     for error in errors:
+
         st.error(error)
 
 else:
@@ -1117,43 +1307,48 @@ else:
     ):
 
         with st.spinner(
-            "Generating hourly data..."
+            "Generating hourly air-quality data..."
         ):
 
-            df = generate_data()
+            hourly_df = generate_data()
 
             daily_df = calculate_daily_average(
-                df
+                hourly_df
             )
 
             monthly_df = calculate_monthly_average(
-                df
+                hourly_df
             )
+
 
             st.session_state[
                 "hourly_data"
-            ] = df
+            ] = hourly_df
+
 
             st.session_state[
                 "daily_data"
             ] = daily_df
 
+
             st.session_state[
                 "monthly_data"
             ] = monthly_df
 
+
         st.success(
-            f"Generated {len(df):,} hourly records."
+            f"Successfully generated "
+            f"{len(hourly_df):,} hourly records."
         )
 
 
 # ============================================================
-# DISPLAY RESULTS
+# RESULTS
 # ============================================================
 
 if "hourly_data" in st.session_state:
 
-    df = st.session_state[
+    hourly_df = st.session_state[
         "hourly_data"
     ]
 
@@ -1177,42 +1372,55 @@ if "hourly_data" in st.session_state:
         unsafe_allow_html=True
     )
 
+
     c1, c2, c3, c4, c5, c6 = st.columns(6)
 
+
     with c1:
+
         st.metric(
             "Hourly Records",
-            f"{len(df):,}"
+            f"{len(hourly_df):,}"
         )
 
+
     with c2:
+
         st.metric(
             "Daily Records",
             f"{len(daily_df):,}"
         )
 
+
     with c3:
+
         st.metric(
             "Monthly Records",
             f"{len(monthly_df):,}"
         )
 
+
     with c4:
+
         st.metric(
             "Region",
             region
         )
 
+
     with c5:
+
         st.metric(
             "City",
             city
         )
 
+
     with c6:
+
         st.metric(
-            "Sensor Type",
-            sensor_type
+            "Provider",
+            provider_name
         )
 
 
@@ -1222,16 +1430,16 @@ if "hourly_data" in st.session_state:
 
     tab1, tab2, tab3, tab4 = st.tabs(
         [
-            "Hourly Data",
-            "Daily Average",
-            "Monthly Average",
-            "Summary"
+            "🕐 Hourly Data",
+            "📅 Daily Average",
+            "📆 Monthly Average",
+            "📊 Summary"
         ]
     )
 
 
     # ========================================================
-    # HOURLY DATA
+    # HOURLY TAB
     # ========================================================
 
     with tab1:
@@ -1240,15 +1448,16 @@ if "hourly_data" in st.session_state:
             "Hourly Generated Data"
         )
 
+
         st.dataframe(
-            df,
+            hourly_df,
             use_container_width=True,
             height=550
         )
 
 
     # ========================================================
-    # DAILY DATA
+    # DAILY TAB
     # ========================================================
 
     with tab2:
@@ -1257,6 +1466,7 @@ if "hourly_data" in st.session_state:
             "Daily Average Data"
         )
 
+
         st.dataframe(
             daily_df,
             use_container_width=True,
@@ -1264,14 +1474,8 @@ if "hourly_data" in st.session_state:
         )
 
 
-        st.write(
-            f"**Number of daily records:** "
-            f"{len(daily_df):,}"
-        )
-
-
     # ========================================================
-    # MONTHLY DATA
+    # MONTHLY TAB
     # ========================================================
 
     with tab3:
@@ -1280,6 +1484,7 @@ if "hourly_data" in st.session_state:
             "Monthly Average Data"
         )
 
+
         st.dataframe(
             monthly_df,
             use_container_width=True,
@@ -1287,24 +1492,20 @@ if "hourly_data" in st.session_state:
         )
 
 
-        st.write(
-            f"**Number of monthly records:** "
-            f"{len(monthly_df):,}"
-        )
-
-
     # ========================================================
-    # SUMMARY
+    # SUMMARY TAB
     # ========================================================
 
     with tab4:
 
         st.subheader(
-            "Pollutant Summary"
+            "Pollutant Summary Statistics"
         )
 
+
         summary = (
-            df[
+
+            hourly_df[
                 [
                     "PM1",
                     "PM2.5",
@@ -1313,10 +1514,15 @@ if "hourly_data" in st.session_state:
                     "Humidity (%)"
                 ]
             ]
+
             .describe()
+
             .T
+
             .round(2)
+
         )
+
 
         st.dataframe(
             summary,
@@ -1324,26 +1530,52 @@ if "hourly_data" in st.session_state:
         )
 
 
+        # ----------------------------------------------------
+        # SEASON SUMMARY
+        # ----------------------------------------------------
+
         st.subheader(
             "Season Summary"
         )
 
+
         season_summary = (
-            df["Season"]
+
+            hourly_df[
+                "Season"
+            ]
+
             .value_counts()
-            .rename_axis("Season")
+
+            .rename_axis(
+                "Season"
+            )
+
             .reset_index(
                 name="Records"
             )
+
         )
 
-        season_summary["Percentage"] = (
-            season_summary["Records"]
+
+        season_summary[
+            "Percentage"
+        ] = (
+
+            season_summary[
+                "Records"
+            ]
+
             /
-            len(df)
+
+            len(hourly_df)
+
             *
+
             100
+
         ).round(2)
+
 
         st.dataframe(
             season_summary,
@@ -1367,7 +1599,7 @@ if "hourly_data" in st.session_state:
 
 
     # ========================================================
-    # DOWNLOAD FORMAT
+    # SELECT DOWNLOAD DATA
     # ========================================================
 
     download_type = st.selectbox(
@@ -1382,31 +1614,39 @@ if "hourly_data" in st.session_state:
 
     if download_type == "Hourly":
 
-        download_df = st.session_state[
-            "hourly_data"
-        ]
+        download_df = (
+            st.session_state[
+                "hourly_data"
+            ]
+        )
 
         file_label = "hourly"
 
+
     elif download_type == "Daily Average":
 
-        download_df = st.session_state[
-            "daily_data"
-        ]
+        download_df = (
+            st.session_state[
+                "daily_data"
+            ]
+        )
 
         file_label = "daily_average"
 
+
     else:
 
-        download_df = st.session_state[
-            "monthly_data"
-        ]
+        download_df = (
+            st.session_state[
+                "monthly_data"
+            ]
+        )
 
         file_label = "monthly_average"
 
 
     # ========================================================
-    # CREATE CSV
+    # CSV
     # ========================================================
 
     csv_data = download_df.to_csv(
@@ -1416,12 +1656,29 @@ if "hourly_data" in st.session_state:
     )
 
 
+    safe_city = (
+        city
+        .replace(" ", "_")
+        .replace("/", "_")
+    )
+
+
+    safe_provider = (
+        provider_name
+        .replace(" ", "_")
+        .replace("/", "_")
+    )
+
+
     base_filename = (
+
         f"{location_id}_"
-        f"{city.replace(' ', '_')}_"
+        f"{safe_city}_"
+        f"{safe_provider}_"
         f"{file_label}_"
         f"{start_date}_"
         f"{end_date}"
+
     )
 
 
@@ -1429,16 +1686,18 @@ if "hourly_data" in st.session_state:
         f"{base_filename}.csv"
     )
 
+
     zip_filename = (
         f"{base_filename}.zip"
     )
 
 
     # ========================================================
-    # CREATE ZIP
+    # ZIP
     # ========================================================
 
     zip_buffer = BytesIO()
+
 
     with zipfile.ZipFile(
         zip_buffer,
@@ -1450,6 +1709,7 @@ if "hourly_data" in st.session_state:
             csv_filename,
             csv_data
         )
+
 
     zip_buffer.seek(0)
 
@@ -1464,22 +1724,34 @@ if "hourly_data" in st.session_state:
     with d1:
 
         st.download_button(
+
             label="📄 Download CSV",
+
             data=csv_data,
+
             file_name=csv_filename,
+
             mime="text/csv",
+
             use_container_width=True
+
         )
 
 
     with d2:
 
         st.download_button(
+
             label="📦 Download ZIP",
+
             data=zip_buffer.getvalue(),
+
             file_name=zip_filename,
+
             mime="application/zip",
+
             use_container_width=True
+
         )
 
 
@@ -1506,9 +1778,14 @@ if "hourly_data" in st.session_state:
         compression=zipfile.ZIP_DEFLATED
     ) as zip_file:
 
-        # Hourly
+
+        # ----------------------------------------------------
+        # HOURLY
+        # ----------------------------------------------------
+
         zip_file.writestr(
             "hourly_data.csv",
+
             st.session_state[
                 "hourly_data"
             ].to_csv(
@@ -1516,9 +1793,14 @@ if "hourly_data" in st.session_state:
             )
         )
 
-        # Daily
+
+        # ----------------------------------------------------
+        # DAILY
+        # ----------------------------------------------------
+
         zip_file.writestr(
             "daily_average.csv",
+
             st.session_state[
                 "daily_data"
             ].to_csv(
@@ -1526,9 +1808,14 @@ if "hourly_data" in st.session_state:
             )
         )
 
-        # Monthly
+
+        # ----------------------------------------------------
+        # MONTHLY
+        # ----------------------------------------------------
+
         zip_file.writestr(
             "monthly_average.csv",
+
             st.session_state[
                 "monthly_data"
             ].to_csv(
@@ -1541,15 +1828,24 @@ if "hourly_data" in st.session_state:
 
 
     st.download_button(
-        label="📦 Download Hourly + Daily + Monthly ZIP",
+
+        label=(
+            "📦 Download Hourly + Daily + "
+            "Monthly ZIP"
+        ),
+
         data=all_zip_buffer.getvalue(),
+
         file_name=(
             f"{location_id}_"
             f"{city.replace(' ', '_')}_"
             f"air_quality_all_data.zip"
         ),
+
         mime="application/zip",
+
         use_container_width=True
+
     )
 
 
@@ -1567,17 +1863,23 @@ if "hourly_data" in st.session_state:
     )
 
 
-    df = st.session_state[
+    hourly_df = st.session_state[
         "hourly_data"
     ]
 
 
-    # PM relationship
+    # --------------------------------------------------------
+    # PM RELATIONSHIP
+    # --------------------------------------------------------
 
     pm_valid = (
-        (df["PM1"] <= df["PM2.5"])
+
+        (hourly_df["PM1"] <= hourly_df["PM2.5"])
+
         &
-        (df["PM2.5"] <= df["PM10"])
+
+        (hourly_df["PM2.5"] <= hourly_df["PM10"])
+
     )
 
 
@@ -1585,12 +1887,24 @@ if "hourly_data" in st.session_state:
         pm_valid.sum()
     )
 
-    total_count = len(df)
+
+    total_count = len(
+        hourly_df
+    )
+
 
     valid_percentage = (
-        valid_count /
-        total_count *
+
+        valid_count
+
+        /
+
+        total_count
+
+        *
+
         100
+
     )
 
 
@@ -1646,6 +1960,7 @@ if "hourly_data" in st.session_state:
         "📋 Generator Configuration"
     ):
 
+
         configuration = pd.DataFrame({
 
             "Parameter": [
@@ -1655,6 +1970,7 @@ if "hourly_data" in st.session_state:
                 "Region",
                 "City",
                 "Location Type",
+                "Provider Name",
                 "Sensor ID",
                 "Sensor Type",
                 "Latitude",
@@ -1672,6 +1988,7 @@ if "hourly_data" in st.session_state:
 
             ],
 
+
             "Value": [
 
                 location_id,
@@ -1679,6 +1996,7 @@ if "hourly_data" in st.session_state:
                 region,
                 city,
                 location_type,
+                provider_name,
                 sensor_id,
                 sensor_type,
                 f"{latitude:.6f}",
@@ -1697,6 +2015,7 @@ if "hourly_data" in st.session_state:
             ]
 
         })
+
 
         st.dataframe(
             configuration,
