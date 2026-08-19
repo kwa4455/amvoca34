@@ -269,7 +269,7 @@ st.sidebar.markdown("### 🏢 Provider Information")
 
 provider_name = st.sidebar.text_input(
     "Provider Name",
-    value="EPA Ghana"
+    value="Clarity"
 )
 
 
