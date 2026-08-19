@@ -427,7 +427,6 @@ else:
 
     custom_season_name = "Custom Season"
 
-
 # ============================================================
 # GHANA SEASONAL DEFAULTS
 # ============================================================
@@ -435,7 +434,6 @@ else:
 DEFAULT_SEASONS = {
 
     "Harmattan": {
-
         "pm1_min": 5.0,
         "pm1_max": 80.0,
 
@@ -453,7 +451,6 @@ DEFAULT_SEASONS = {
     },
 
     "Wet Season": {
-
         "pm1_min": 1.0,
         "pm1_max": 40.0,
 
@@ -471,7 +468,6 @@ DEFAULT_SEASONS = {
     },
 
     "Dry Season": {
-
         "pm1_min": 3.0,
         "pm1_max": 60.0,
 
@@ -488,6 +484,9 @@ DEFAULT_SEASONS = {
         "humidity_max": 80.0
     }
 }
+
+
+
 
 
 # ============================================================
@@ -510,76 +509,183 @@ else:
 
     default = DEFAULT_SEASONS["Wet Season"]
 
-
 # ============================================================
-# POLLUTANT RANGES
+# SEASONAL POLLUTANT RANGES
 # ============================================================
 
-st.sidebar.markdown("### 🧪 Pollutant Ranges")
+st.sidebar.markdown("### 🧪 Seasonal PM Ranges")
 
 st.sidebar.caption(
-    "These ranges are for synthetic-data generation."
+    "Set separate PM ranges for each Ghanaian season. "
+    "The generator will automatically apply the appropriate "
+    "range to each date."
 )
 
+# ============================================================
+# HARMATTAN
+# ============================================================
 
-# ------------------------------------------------------------
-# PM1
-# ------------------------------------------------------------
+with st.sidebar.expander("🌫️ Harmattan PM Ranges", expanded=True):
 
-pm1_min = st.sidebar.number_input(
-    "PM1 Minimum",
-    min_value=0.0,
-    value=float(default["pm1_min"]),
-    step=0.1
-)
+    harmattan_pm1_min = st.number_input(
+        "PM1 Minimum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Harmattan"]["pm1_min"]),
+        step=0.1,
+        key="harmattan_pm1_min"
+    )
+
+    harmattan_pm1_max = st.number_input(
+        "PM1 Maximum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Harmattan"]["pm1_max"]),
+        step=0.1,
+        key="harmattan_pm1_max"
+    )
+
+    harmattan_pm25_min = st.number_input(
+        "PM2.5 Minimum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Harmattan"]["pm25_min"]),
+        step=0.1,
+        key="harmattan_pm25_min"
+    )
+
+    harmattan_pm25_max = st.number_input(
+        "PM2.5 Maximum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Harmattan"]["pm25_max"]),
+        step=0.1,
+        key="harmattan_pm25_max"
+    )
+
+    harmattan_pm10_min = st.number_input(
+        "PM10 Minimum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Harmattan"]["pm10_min"]),
+        step=0.1,
+        key="harmattan_pm10_min"
+    )
+
+    harmattan_pm10_max = st.number_input(
+        "PM10 Maximum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Harmattan"]["pm10_max"]),
+        step=0.1,
+        key="harmattan_pm10_max"
+    )
 
 
-pm1_max = st.sidebar.number_input(
-    "PM1 Maximum",
-    min_value=0.0,
-    value=float(default["pm1_max"]),
-    step=0.1
-)
+# ============================================================
+# WET SEASON
+# ============================================================
+
+with st.sidebar.expander("🌧️ Wet Season PM Ranges", expanded=False):
+
+    wet_pm1_min = st.number_input(
+        "PM1 Minimum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Wet Season"]["pm1_min"]),
+        step=0.1,
+        key="wet_pm1_min"
+    )
+
+    wet_pm1_max = st.number_input(
+        "PM1 Maximum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Wet Season"]["pm1_max"]),
+        step=0.1,
+        key="wet_pm1_max"
+    )
+
+    wet_pm25_min = st.number_input(
+        "PM2.5 Minimum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Wet Season"]["pm25_min"]),
+        step=0.1,
+        key="wet_pm25_min"
+    )
+
+    wet_pm25_max = st.number_input(
+        "PM2.5 Maximum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Wet Season"]["pm25_max"]),
+        step=0.1,
+        key="wet_pm25_max"
+    )
+
+    wet_pm10_min = st.number_input(
+        "PM10 Minimum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Wet Season"]["pm10_min"]),
+        step=0.1,
+        key="wet_pm10_min"
+    )
+
+    wet_pm10_max = st.number_input(
+        "PM10 Maximum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Wet Season"]["pm10_max"]),
+        step=0.1,
+        key="wet_pm10_max"
+    )
 
 
-# ------------------------------------------------------------
-# PM2.5
-# ------------------------------------------------------------
+# ============================================================
+# DRY SEASON
+# ============================================================
 
-pm25_min = st.sidebar.number_input(
-    "PM2.5 Minimum",
-    min_value=0.0,
-    value=float(default["pm25_min"]),
-    step=0.1
-)
+with st.sidebar.expander("☀️ Dry Season PM Ranges", expanded=False):
+
+    dry_pm1_min = st.number_input(
+        "PM1 Minimum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Dry Season"]["pm1_min"]),
+        step=0.1,
+        key="dry_pm1_min"
+    )
+
+    dry_pm1_max = st.number_input(
+        "PM1 Maximum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Dry Season"]["pm1_max"]),
+        step=0.1,
+        key="dry_pm1_max"
+    )
+
+    dry_pm25_min = st.number_input(
+        "PM2.5 Minimum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Dry Season"]["pm25_min"]),
+        step=0.1,
+        key="dry_pm25_min"
+    )
+
+    dry_pm25_max = st.number_input(
+        "PM2.5 Maximum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Dry Season"]["pm25_max"]),
+        step=0.1,
+        key="dry_pm25_max"
+    )
+
+    dry_pm10_min = st.number_input(
+        "PM10 Minimum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Dry Season"]["pm10_min"]),
+        step=0.1,
+        key="dry_pm10_min"
+    )
+
+    dry_pm10_max = st.number_input(
+        "PM10 Maximum",
+        min_value=0.0,
+        value=float(DEFAULT_SEASONS["Dry Season"]["pm10_max"]),
+        step=0.1,
+        key="dry_pm10_max"
+    )
 
 
-pm25_max = st.sidebar.number_input(
-    "PM2.5 Maximum",
-    min_value=0.0,
-    value=float(default["pm25_max"]),
-    step=0.1
-)
-
-
-# ------------------------------------------------------------
-# PM10
-# ------------------------------------------------------------
-
-pm10_min = st.sidebar.number_input(
-    "PM10 Minimum",
-    min_value=0.0,
-    value=float(default["pm10_min"]),
-    step=0.1
-)
-
-
-pm10_max = st.sidebar.number_input(
-    "PM10 Maximum",
-    min_value=0.0,
-    value=float(default["pm10_max"]),
-    step=0.1
-)
 
 
 # ============================================================
@@ -736,6 +842,63 @@ def determine_season(month):
 
     return "Dry Season"
 
+# ============================================================
+# GET PM RANGE FOR SEASON
+# ============================================================
+
+def get_seasonal_pm_ranges(season):
+
+    if season == "Harmattan":
+
+        return {
+            "pm1_min": harmattan_pm1_min,
+            "pm1_max": harmattan_pm1_max,
+
+            "pm25_min": harmattan_pm25_min,
+            "pm25_max": harmattan_pm25_max,
+
+            "pm10_min": harmattan_pm10_min,
+            "pm10_max": harmattan_pm10_max
+        }
+
+    elif season == "Wet Season":
+
+        return {
+            "pm1_min": wet_pm1_min,
+            "pm1_max": wet_pm1_max,
+
+            "pm25_min": wet_pm25_min,
+            "pm25_max": wet_pm25_max,
+
+            "pm10_min": wet_pm10_min,
+            "pm10_max": wet_pm10_max
+        }
+
+    elif season == "Dry Season":
+
+        return {
+            "pm1_min": dry_pm1_min,
+            "pm1_max": dry_pm1_max,
+
+            "pm25_min": dry_pm25_min,
+            "pm25_max": dry_pm25_max,
+
+            "pm10_min": dry_pm10_min,
+            "pm10_max": dry_pm10_max
+        }
+
+    else:
+
+        return {
+            "pm1_min": wet_pm1_min,
+            "pm1_max": wet_pm1_max,
+
+            "pm25_min": wet_pm25_min,
+            "pm25_max": wet_pm25_max,
+
+            "pm10_min": wet_pm10_min,
+            "pm10_max": wet_pm10_max
+        }
 
 # ============================================================
 # GENERATE HOURLY DATA
@@ -863,18 +1026,30 @@ def generate_data():
         # PM1
         # ====================================================
 
-        pm1 = rng.uniform(
-            pm1_min,
-            pm1_max
-        )
-
-
+        pm_ranges = get_seasonal_pm_ranges(season)
+        pm1_min_current = pm_ranges["pm1_min"]
+        pm1_max_current = pm_ranges["pm1_max"]
         # ====================================================
         # PM2.5
         # ====================================================
+        pm25_min_current = pm_ranges["pm25_min"]
+        pm25_max_current = pm_ranges["pm25_max"]
+
+        pm10_min_current = pm_ranges["pm10_min"]
+        pm10_max_current = pm_ranges["pm10_max"]
+
+
+        # ====================================================
+        # PM1
+        # ====================================================
+        pm1 = rng.uniform(
+            pm1_min_current,
+            pm1_max_current
+        )
+
 
         pm25_lower = max(
-            pm25_min,
+            pm25_min_current,
             pm1
         )
 
@@ -883,12 +1058,12 @@ def generate_data():
 
             pm25 = rng.uniform(
                 pm25_lower,
-                pm25_max
+                pm25_max_current
             )
 
         else:
 
-            pm25 = pm25_max
+            pm25_max_current
 
 
         # ====================================================
@@ -896,7 +1071,7 @@ def generate_data():
         # ====================================================
 
         pm10_lower = max(
-            pm10_min,
+            pm10_min_current,
             pm25
         )
 
@@ -905,12 +1080,12 @@ def generate_data():
 
             pm10 = rng.uniform(
                 pm10_lower,
-                pm10_max
+                pm10_max_current
             )
 
         else:
 
-            pm10 = pm10_max
+            pm10 = pm10_max_current
 
 
         # ====================================================
@@ -1222,46 +1397,97 @@ if end_date < start_date:
         "End Date must be greater than "
         "or equal to Start Date."
     )
+# ============================================================
+# SEASONAL PM VALIDATION
+# ============================================================
 
+seasonal_pm_ranges = {
 
-if pm1_max < pm1_min:
+    "Harmattan": (
+        harmattan_pm1_min,
+        harmattan_pm1_max,
+        harmattan_pm25_min,
+        harmattan_pm25_max,
+        harmattan_pm10_min,
+        harmattan_pm10_max
+    ),
 
-    errors.append(
-        "PM1 maximum must be greater than "
-        "or equal to minimum."
+    "Wet Season": (
+        wet_pm1_min,
+        wet_pm1_max,
+        wet_pm25_min,
+        wet_pm25_max,
+        wet_pm10_min,
+        wet_pm10_max
+    ),
+
+    "Dry Season": (
+        dry_pm1_min,
+        dry_pm1_max,
+        dry_pm25_min,
+        dry_pm25_max,
+        dry_pm10_min,
+        dry_pm10_max
     )
+}
 
 
-if pm25_max < pm25_min:
+for season, values in seasonal_pm_ranges.items():
 
-    errors.append(
-        "PM2.5 maximum must be greater than "
-        "or equal to minimum."
-    )
-
-
-if pm10_max < pm10_min:
-
-    errors.append(
-        "PM10 maximum must be greater than "
-        "or equal to minimum."
-    )
+    (
+        pm1_min_s,
+        pm1_max_s,
+        pm25_min_s,
+        pm25_max_s,
+        pm10_min_s,
+        pm10_max_s
+    ) = values
 
 
-if pm1_max > pm25_max:
+    # PM1
+    if pm1_max_s < pm1_min_s:
 
-    errors.append(
-        "PM1 maximum should not exceed "
-        "PM2.5 maximum."
-    )
+        errors.append(
+            f"{season}: PM1 maximum must be "
+            f"greater than or equal to minimum."
+        )
 
 
-if pm25_max > pm10_max:
+    # PM2.5
+    if pm25_max_s < pm25_min_s:
 
-    errors.append(
-        "PM2.5 maximum should not exceed "
-        "PM10 maximum."
-    )
+        errors.append(
+            f"{season}: PM2.5 maximum must be "
+            f"greater than or equal to minimum."
+        )
+
+
+    # PM10
+    if pm10_max_s < pm10_min_s:
+
+        errors.append(
+            f"{season}: PM10 maximum must be "
+            f"greater than or equal to minimum."
+        )
+
+
+    # PM relationship
+    if pm1_max_s > pm25_max_s:
+
+        errors.append(
+            f"{season}: PM1 maximum should not exceed "
+            f"PM2.5 maximum."
+        )
+
+
+    if pm25_max_s > pm10_max_s:
+
+        errors.append(
+            f"{season}: PM2.5 maximum should not exceed "
+            f"PM10 maximum."
+        )
+
+
 
 
 if temperature_max < temperature_min:
@@ -1980,9 +2206,17 @@ if "hourly_data" in st.session_state:
                 "Season Mode",
                 "Time Zone",
                 "Opening Schedule",
-                "PM1 Range",
-                "PM2.5 Range",
-                "PM10 Range",
+                "Harmattan PM1 Range",
+                "Harmattan PM2.5 Range",
+                "Harmattan PM10 Range",
+
+                "Wet Season PM1 Range",
+                "Wet Season PM2.5 Range",
+                "Wet Season PM10 Range",
+
+                "Dry Season PM1 Range",
+                "Dry Season PM2.5 Range",
+                "Dry Season PM10 Range",
                 "Temperature Range",
                 "Humidity Range"
 
@@ -2006,9 +2240,17 @@ if "hourly_data" in st.session_state:
                 season_mode,
                 timezone_name,
                 place_open_option,
-                f"{pm1_min} - {pm1_max}",
-                f"{pm25_min} - {pm25_max}",
-                f"{pm10_min} - {pm10_max}",
+                f"{harmattan_pm1_min} - {harmattan_pm1_max}",
+                f"{harmattan_pm25_min} - {harmattan_pm25_max}",
+                f"{harmattan_pm10_min} - {harmattan_pm10_max}",
+
+                f"{wet_pm1_min} - {wet_pm1_max}",
+                f"{wet_pm25_min} - {wet_pm25_max}",
+                f"{wet_pm10_min} - {wet_pm10_max}",
+
+                f"{dry_pm1_min} - {dry_pm1_max}",
+                f"{dry_pm25_min} - {dry_pm25_max}",
+                f"{dry_pm10_min} - {dry_pm10_max}",
                 f"{temperature_min} - {temperature_max} °C",
                 f"{humidity_min} - {humidity_max} %"
 
