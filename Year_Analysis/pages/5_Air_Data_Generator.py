@@ -427,63 +427,6 @@ else:
 
     custom_season_name = "Custom Season"
 
-# ============================================================
-# GHANA SEASONAL DEFAULTS
-# ============================================================
-
-DEFAULT_SEASONS = {
-
-    "Harmattan": {
-        "pm1_min": 5.0,
-        "pm1_max": 80.0,
-
-        "pm25_min": 10.0,
-        "pm25_max": 120.0,
-
-        "pm10_min": 20.0,
-        "pm10_max": 250.0,
-
-        "temp_min": 22.0,
-        "temp_max": 35.0,
-
-        "humidity_min": 25.0,
-        "humidity_max": 70.0
-    },
-
-    "Wet Season": {
-        "pm1_min": 1.0,
-        "pm1_max": 40.0,
-
-        "pm25_min": 3.0,
-        "pm25_max": 60.0,
-
-        "pm10_min": 5.0,
-        "pm10_max": 120.0,
-
-        "temp_min": 23.0,
-        "temp_max": 32.0,
-
-        "humidity_min": 60.0,
-        "humidity_max": 98.0
-    },
-
-    "Dry Season": {
-        "pm1_min": 3.0,
-        "pm1_max": 60.0,
-
-        "pm25_min": 5.0,
-        "pm25_max": 90.0,
-
-        "pm10_min": 10.0,
-        "pm10_max": 180.0,
-
-        "temp_min": 24.0,
-        "temp_max": 36.0,
-
-        "humidity_min": 35.0,
-        "humidity_max": 80.0
-    }
-}
 
 
 
