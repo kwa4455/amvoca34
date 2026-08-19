@@ -1076,7 +1076,7 @@ def generate_data():
         )
 
 
-        if pm10_lower <= pm10_max:
+        if pm10_lower <= pm10_max_current:
 
             pm10 = rng.uniform(
                 pm10_lower,
