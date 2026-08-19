@@ -1054,7 +1054,7 @@ def generate_data():
         )
 
 
-        if pm25_lower <= pm25_max:
+        if pm25_lower <= pm25_max_current:
 
             pm25 = rng.uniform(
                 pm25_lower,
